@@ -1,6 +1,6 @@
 [versions]
 agp = "8.3.2"
-kotlin = "1.9.23"
+kotlin = "2.0.0"
 coreKt = "1.12.0"
 lifecycleRuntimeKt = "2.7.0"
 activityCompose = "1.8.2"
@@ -10,6 +10,7 @@ supabase = "2.3.1"
 ktor = "2.3.9"
 kotlinxSerialization = "1.6.3"
 coroutines = "1.8.0"
+signalProtocol = "0.86.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKt" }
@@ -38,8 +39,10 @@ ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref =
 # KotlinX Serialization & Coroutines
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+signal-protocol-android = { group = "org.signal", name = "libsignal-android", version.ref = "signalProtocol" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
