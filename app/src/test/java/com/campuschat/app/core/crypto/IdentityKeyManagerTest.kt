@@ -2,6 +2,7 @@ package com.campuschat.app.core.crypto
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -77,6 +78,24 @@ class IdentityKeyManagerTest {
             identity1.publicKey.serialize(),
             identity2.publicKey.serialize()
         )
+    }
+
+    @Test
+    fun testDeviceMismatchGeneratesFreshIdentityAndDoesNotReuse() {
+        val testContext = TestContext(mockFilesDir)
+        val manager1 = IdentityKeyManagerImpl(testContext, fakeCryptoKeyManager)
+
+        val deviceId1 = "device-uuid-11111"
+        val identity1 = manager1.getOrGenerateIdentity(deviceId1)
+
+        // Simulate new app installation with different device ID
+        val manager2 = IdentityKeyManagerImpl(testContext, fakeCryptoKeyManager)
+        val deviceId2 = "device-uuid-22222"
+        val identity2 = manager2.getOrGenerateIdentity(deviceId2)
+
+        val isIdentical = identity1.publicKey.serialize().contentEquals(identity2.publicKey.serialize())
+        assertFalse("Identity key must NOT be reused when device ID mismatches", isIdentical)
+        assertEquals(deviceId2, manager2.getBoundDeviceId())
     }
 
     @Test

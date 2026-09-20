@@ -17,11 +17,12 @@ interface IdentityKeyManager {
 }
 
 class IdentityKeyManagerImpl(
-    private val context: Context,
-    private val cryptoKeyManager: CryptoKeyManager
+    private val context: Context?,
+    private val cryptoKeyManager: CryptoKeyManager,
+    private val customIdentityFile: File? = null
 ) : IdentityKeyManager {
 
-    private val identityFile = File(context.filesDir, IDENTITY_FILE_NAME)
+    private val identityFile = customIdentityFile ?: File(context!!.filesDir, IDENTITY_FILE_NAME)
     private var cachedIdentityKeyPair: IdentityKeyPair? = null
     private var cachedDeviceId: String? = null
 
@@ -35,12 +36,10 @@ class IdentityKeyManagerImpl(
     override fun getOrGenerateIdentity(deviceId: String): IdentityKeyPair {
         require(deviceId.isNotBlank()) { "DeviceId cannot be blank" }
 
-        // Step 1: Check in-memory cache
         cachedIdentityKeyPair?.let {
             if (cachedDeviceId == deviceId) return it
         }
 
-        // Step 2: Check persistent encrypted storage
         if (identityFile.exists()) {
             try {
                 val (identityKeyPair, boundDevice) = loadEncryptedIdentity()
@@ -48,19 +47,19 @@ class IdentityKeyManagerImpl(
                     cachedIdentityKeyPair = identityKeyPair
                     cachedDeviceId = boundDevice
                     return identityKeyPair
-                } else {
-                    cachedIdentityKeyPair = identityKeyPair
-                    cachedDeviceId = boundDevice
-                    return identityKeyPair
+                }
+                cachedIdentityKeyPair = null
+                cachedDeviceId = null
+                if (identityFile.exists()) {
+                    identityFile.delete()
                 }
             } catch (e: Exception) {
-                throw CryptoException.CorruptedKeyStateException(
-                    "Encrypted identity key store is corrupted or cannot be decrypted", e
-                )
+                if (identityFile.exists()) {
+                    identityFile.delete()
+                }
             }
         }
 
-        // Step 3: Generate fresh Signal IdentityKeyPair using org.signal API
         val freshIdentityKeyPair = try {
             IdentityKeyPair.generate()
         } catch (e: Throwable) {
@@ -69,7 +68,6 @@ class IdentityKeyManagerImpl(
             )
         }
 
-        // Step 4: Encrypt and persist
         saveEncryptedIdentity(freshIdentityKeyPair, deviceId)
 
         cachedIdentityKeyPair = freshIdentityKeyPair
@@ -123,7 +121,7 @@ class IdentityKeyManagerImpl(
     }
 
     private fun saveEncryptedIdentity(identityKeyPair: IdentityKeyPair, deviceId: String) {
-        val serializedKeyPair = identityKeyPair.serialize() // Official Signal IdentityKeyPair byte serialization
+        val serializedKeyPair = identityKeyPair.serialize()
         val deviceIdBytes = deviceId.toByteArray(Charsets.UTF_8)
 
         val buffer = ByteBuffer.allocate(4 + 4 + 4 + deviceIdBytes.size + 4 + serializedKeyPair.size)
@@ -137,7 +135,6 @@ class IdentityKeyManagerImpl(
         val plaintextBytes = buffer.array()
         val encryptedBlob = cryptoKeyManager.encryptData(plaintextBytes)
 
-        // Structure of file payload: [4 bytes IV length][IV bytes][4 bytes Ciphertext length][Ciphertext bytes]
         val fileBuffer = ByteBuffer.allocate(4 + encryptedBlob.iv.size + 4 + encryptedBlob.ciphertext.size)
         fileBuffer.putInt(encryptedBlob.iv.size)
         fileBuffer.put(encryptedBlob.iv)
