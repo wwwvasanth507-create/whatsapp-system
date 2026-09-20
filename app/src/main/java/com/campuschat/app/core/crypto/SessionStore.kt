@@ -64,13 +64,7 @@ class SessionStoreImpl(
     @Synchronized
     override fun loadSession(address: SignalProtocolAddress): SessionRecord {
         val key = makeAddressKey(address)
-        val existing = sessionMap[key]
-        if (existing != null) {
-            return existing
-        }
-        val fresh = SessionRecord()
-        sessionMap[key] = fresh
-        return fresh
+        return sessionMap[key] ?: SessionRecord()
     }
 
     @Synchronized
@@ -90,7 +84,10 @@ class SessionStoreImpl(
     override fun getSubDeviceSessions(name: String): List<Int> {
         val prefix = "$name:"
         return sessionMap.keys
-            .filter { it.startsWith(prefix) }
+            .filter { key ->
+                val record = sessionMap[key]
+                key.startsWith(prefix) && record != null
+            }
             .mapNotNull { it.substringAfter(prefix).toIntOrNull() }
     }
 

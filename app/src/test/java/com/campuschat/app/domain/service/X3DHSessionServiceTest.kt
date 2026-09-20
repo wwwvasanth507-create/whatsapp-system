@@ -51,12 +51,12 @@ class X3DHSessionServiceTest {
     private lateinit var sessionService: X3DHSessionServiceImpl
 
     private val aliceDeviceId = "alice-device-uuid-001"
-    private val aliceUserId = "10000000001"
-    private val aliceRegistrationId = 1111
+    private val aliceUserId = "+10000000001"
+    private val aliceRegistrationId = 1
 
-    private val bobUserId = "10000000002"
+    private val bobUserId = "+10000000002"
     private val bobDeviceId = "bob-device-uuid-002"
-    private val bobRegistrationId = 2222
+    private val bobRegistrationId = 2
 
     private lateinit var bobIdentityKeyPair: IdentityKeyPair
     private var bobSpkId = 1
@@ -65,6 +65,9 @@ class X3DHSessionServiceTest {
 
     private var bobOpkId = 10
     private lateinit var bobOpkKeyPair: ECKeyPair
+
+    private lateinit var bobKemKeyPair: org.signal.libsignal.protocol.kem.KEMKeyPair
+    private lateinit var bobKemSignature: ByteArray
 
     private val masterKey: SecretKey = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
 
@@ -109,6 +112,9 @@ class X3DHSessionServiceTest {
         bobSpkKeyPair = ECKeyPair.generate()
         bobSpkSignature = bobIdentityKeyPair.privateKey.calculateSignature(bobSpkKeyPair.publicKey.serialize())
         bobOpkKeyPair = ECKeyPair.generate()
+
+        bobKemKeyPair = org.signal.libsignal.protocol.kem.KEMKeyPair.generate(org.signal.libsignal.protocol.kem.KEMKeyType.values()[0])
+        bobKemSignature = bobIdentityKeyPair.privateKey.calculateSignature(bobKemKeyPair.publicKey.serialize())
     }
 
     @After
@@ -126,7 +132,10 @@ class X3DHSessionServiceTest {
             signedPreKeyBase64 = encodeBase64(bobSpkKeyPair.publicKey.serialize()),
             signedPreKeySignatureBase64 = encodeBase64(bobSpkSignature),
             oneTimePreKeyId = if (withOpk) bobOpkId else null,
-            oneTimePreKeyBase64 = if (withOpk) encodeBase64(bobOpkKeyPair.publicKey.serialize()) else null
+            oneTimePreKeyBase64 = if (withOpk) encodeBase64(bobOpkKeyPair.publicKey.serialize()) else null,
+            kyberPreKeyId = 1,
+            kyberPreKeyBase64 = encodeBase64(bobKemKeyPair.publicKey.serialize()),
+            kyberPreKeySignatureBase64 = encodeBase64(bobKemSignature)
         )
     }
 
@@ -134,7 +143,6 @@ class X3DHSessionServiceTest {
     fun testValidPreKeyBundleAcceptedAndSessionEstablished() {
         val bundle = createValidBobBundle(withOpk = true)
         val result = sessionService.processAndEstablishSession(bundle)
-
         assertTrue("Expected SessionEstablished but got $result", result is X3DHSessionResult.SessionEstablished)
         val established = result as X3DHSessionResult.SessionEstablished
         assertEquals(bobUserId, established.address.name)
@@ -152,7 +160,7 @@ class X3DHSessionServiceTest {
         val bundle = createValidBobBundle(withOpk = false)
         val result = sessionService.processAndEstablishSession(bundle)
 
-        assertTrue(result is X3DHSessionResult.SessionEstablished)
+        assertTrue("Expected SessionEstablished but got $result", result is X3DHSessionResult.SessionEstablished)
         val established = result as X3DHSessionResult.SessionEstablished
         assertNull(established.claimedOneTimePreKeyId)
 
@@ -230,7 +238,7 @@ class X3DHSessionServiceTest {
         assertTrue(resultB1 is X3DHSessionResult.SessionEstablished)
 
         // Bob Device 2
-        val bobDev2RegistrationId = 3333
+        val bobDev2RegistrationId = 3
         val bobDev2Id = "bob-device-uuid-003"
         val bobDev2SpkKeyPair = ECKeyPair.generate()
         val bobDev2SpkSig = bobIdentityKeyPair.privateKey.calculateSignature(bobDev2SpkKeyPair.publicKey.serialize())
@@ -297,7 +305,7 @@ class X3DHSessionServiceTest {
         private val aliceUserInfo: UserInfo by lazy {
             val jsonStr = """
             {
-                "id": "user-alice",
+                "id": "+10000000001",
                 "aud": "authenticated",
                 "role": "authenticated",
                 "email": "alice@campus.edu",

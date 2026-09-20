@@ -13,5 +13,8 @@ data class RemotePreKeyBundle(
     val signedPreKeyBase64: String,
     val signedPreKeySignatureBase64: String,
     val oneTimePreKeyId: Int?,
-    val oneTimePreKeyBase64: String?
+    val oneTimePreKeyBase64: String?,
+    val kyberPreKeyId: Int? = null,
+    val kyberPreKeyBase64: String? = null,
+    val kyberPreKeySignatureBase64: String? = null
 )

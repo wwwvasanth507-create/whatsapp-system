@@ -125,23 +125,35 @@ class X3DHSessionServiceImpl(
                 return X3DHSessionResult.IdentityChanged(bundle.userId, bundle.deviceId)
             }
 
-            // 8. Construct libsignal PreKeyBundle
-            val kemKeyPair = org.signal.libsignal.protocol.kem.KEMKeyPair.generate(org.signal.libsignal.protocol.kem.KEMKeyType.values()[0])
-            val dummyKemKey = kemKeyPair.publicKey
-            val dummyKemSig = ByteArray(64)
+            // 8. Decode Kyber PreKey if available, or generate fallback for PreKeyBundle constructor
+            val (kyberId, kyberKey, kyberSig) = if (!bundle.kyberPreKeyBase64.isNullOrBlank() && !bundle.kyberPreKeySignatureBase64.isNullOrBlank()) {
+                val kKeyBytes = decodeBase64(bundle.kyberPreKeyBase64)
+                val kSigBytes = decodeBase64(bundle.kyberPreKeySignatureBase64)
+                val kKey = org.signal.libsignal.protocol.kem.KEMPublicKey(kKeyBytes)
+                Triple(bundle.kyberPreKeyId ?: 1, kKey, kSigBytes)
+            } else {
+                val kemKeyPair = org.signal.libsignal.protocol.kem.KEMKeyPair.generate(org.signal.libsignal.protocol.kem.KEMKeyType.values()[0])
+                Triple(0, kemKeyPair.publicKey, ByteArray(64))
+            }
+
+            val (opkId, opkKey) = if (oneTimePreKey != null && bundle.oneTimePreKeyId != null) {
+                Pair(bundle.oneTimePreKeyId, oneTimePreKey)
+            } else {
+                Pair(-1, null)
+            }
 
             val preKeyBundle = PreKeyBundle(
                 bundle.registrationId,
                 bundle.registrationId,
-                bundle.oneTimePreKeyId ?: -1,
-                oneTimePreKey,
+                opkId,
+                opkKey,
                 bundle.signedPreKeyId,
                 signedPreKey,
                 signatureBytes,
                 identityKey,
-                -1,
-                dummyKemKey,
-                dummyKemSig
+                kyberId,
+                kyberKey,
+                kyberSig
             )
 
             // 9. Process X3DH Session Establishment via official libsignal SessionBuilder
@@ -171,10 +183,16 @@ class X3DHSessionServiceImpl(
     }
 
     private fun decodeBase64(base64Str: String): ByteArray {
+        val trimmed = base64Str.trim()
+        if (trimmed.isEmpty()) return ByteArray(0)
         return try {
-            java.util.Base64.getDecoder().decode(base64Str)
-        } catch (e: Throwable) {
-            android.util.Base64.decode(base64Str, android.util.Base64.NO_WRAP)
+            java.util.Base64.getDecoder().decode(trimmed)
+        } catch (e1: Throwable) {
+            try {
+                java.util.Base64.getUrlDecoder().decode(trimmed)
+            } catch (e2: Throwable) {
+                android.util.Base64.decode(trimmed, android.util.Base64.NO_WRAP)
+            }
         }
     }
 

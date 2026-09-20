@@ -90,7 +90,7 @@ class CampusChatSignalProtocolStore(
         val availableOpks = preKeyManager.getAvailableOneTimePreKeys(localDeviceId)
         val record = availableOpks.firstOrNull { it.id == preKeyId }
             ?: preKeyManager.consumeLocalOneTimePreKey(localDeviceId, preKeyId)
-            ?: throw CryptoException.CorruptedKeyStateException("One-time prekey $preKeyId not found locally")
+            ?: throw org.signal.libsignal.protocol.InvalidKeyIdException("One-time prekey $preKeyId not found locally")
         return record
     }
 
@@ -110,7 +110,7 @@ class CampusChatSignalProtocolStore(
 
     override fun loadSignedPreKey(signedPreKeyId: Int): SignedPreKeyRecord {
         val record = preKeyManager.getSignedPreKey(localDeviceId, signedPreKeyId)
-            ?: throw CryptoException.CorruptedKeyStateException("Signed prekey $signedPreKeyId not found locally")
+            ?: throw org.signal.libsignal.protocol.InvalidKeyIdException("Signed prekey $signedPreKeyId not found locally")
         return record
     }
 
@@ -180,19 +180,23 @@ class CampusChatSignalProtocolStore(
 
     // --- KyberPreKeyStore Implementation ---
 
+    private val kyberPreKeys = ConcurrentHashMap<Int, KyberPreKeyRecord>()
+
     override fun loadKyberPreKey(kyberPreKeyId: Int): KyberPreKeyRecord {
-        throw CryptoException.CorruptedKeyStateException("KyberPreKey $kyberPreKeyId not supported in classic X3DH")
+        return kyberPreKeys[kyberPreKeyId]
+            ?: throw org.signal.libsignal.protocol.InvalidKeyIdException("KyberPreKey $kyberPreKeyId not found")
     }
 
     override fun loadKyberPreKeys(): List<KyberPreKeyRecord> {
-        return emptyList()
+        return kyberPreKeys.values.toList()
     }
 
     override fun storeKyberPreKey(kyberPreKeyId: Int, record: KyberPreKeyRecord) {
+        kyberPreKeys[kyberPreKeyId] = record
     }
 
     override fun containsKyberPreKey(kyberPreKeyId: Int): Boolean {
-        return false
+        return kyberPreKeys.containsKey(kyberPreKeyId)
     }
 
     override fun markKyberPreKeyUsed(kyberPreKeyId: Int, signedPreKeyId: Int, baseKey: ECPublicKey) {

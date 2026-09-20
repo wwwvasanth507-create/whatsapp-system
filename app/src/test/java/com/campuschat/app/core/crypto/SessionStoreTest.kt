@@ -10,6 +10,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.signal.libsignal.protocol.IdentityKeyPair
 import org.signal.libsignal.protocol.SignalProtocolAddress
+import org.signal.libsignal.protocol.state.PreKeyBundle
 import org.signal.libsignal.protocol.state.SessionRecord
 import java.io.File
 import javax.crypto.KeyGenerator
@@ -29,15 +30,55 @@ class SessionStoreTest {
     private val masterKey: SecretKey = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()
 
     @Test
-    fun testProtocolAddressFormats() {
-        val testNames = listOf("+10000000002", "10000000002", "bob", "bob_user", "bob-user-uuid-200")
-        for (name in testNames) {
-            try {
-                val addr = SignalProtocolAddress(name, 1)
-                println("VALID FORMAT: '$name' -> ${addr.name}")
-            } catch (e: Throwable) {
-                println("INVALID FORMAT: '$name' -> ${e.message}")
-            }
+    fun testPreKeyBundleSessionBuilder() {
+        val aliceIdentity = IdentityKeyPair.generate()
+        val aliceDeviceId = "alice-dev-1"
+        val aliceRegId = 1
+
+        val bobIdentity = IdentityKeyPair.generate()
+        val bobAddress = SignalProtocolAddress("+10000000002", 2)
+        val bobSpkKeyPair = org.signal.libsignal.protocol.ecc.ECKeyPair.generate()
+        val bobSpkSig = bobIdentity.privateKey.calculateSignature(bobSpkKeyPair.publicKey.serialize())
+        val bobOpkKeyPair = org.signal.libsignal.protocol.ecc.ECKeyPair.generate()
+
+        val kemKeyPair = org.signal.libsignal.protocol.kem.KEMKeyPair.generate(org.signal.libsignal.protocol.kem.KEMKeyType.values()[0])
+        val dummyKemKey = kemKeyPair.publicKey
+        val dummyKemSig = bobIdentity.privateKey.calculateSignature(dummyKemKey.serialize())
+
+        val preKeyBundle = PreKeyBundle(
+            2,
+            2,
+            1,
+            bobOpkKeyPair.publicKey,
+            1,
+            bobSpkKeyPair.publicKey,
+            bobSpkSig,
+            bobIdentity.publicKey,
+            1,
+            dummyKemKey,
+            dummyKemSig
+        )
+
+        val identityKeyManager = IdentityKeyManagerImpl(null, cryptoKeyManager, File(tempFolder.root, "id.bin"))
+        identityKeyManager.getOrGenerateIdentity(aliceDeviceId)
+        val preKeyManager = PreKeyManagerImpl(null, cryptoKeyManager, identityKeyManager, File(tempFolder.root, "pk.bin"))
+        preKeyManager.initializePreKeys(aliceDeviceId)
+
+        val store = CampusChatSignalProtocolStore(
+            identityKeyManager = identityKeyManager,
+            preKeyManager = preKeyManager,
+            sessionStore = sessionStore,
+            localDeviceId = aliceDeviceId,
+            localRegistrationId = aliceRegId
+        )
+
+        val sessionBuilder = org.signal.libsignal.protocol.SessionBuilder(store, bobAddress)
+        try {
+            sessionBuilder.process(preKeyBundle)
+            println("SESSION BUILDER SUCCESS!")
+        } catch (e: Throwable) {
+            println("SESSION BUILDER ERROR: ${e.javaClass.name}: ${e.message}")
+            e.printStackTrace()
         }
     }
 
