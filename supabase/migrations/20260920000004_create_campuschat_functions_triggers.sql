@@ -47,26 +47,32 @@ $$;
 COMMENT ON FUNCTION public.update_updated_at_column IS 'Updates updated_at column to current timestamp on UPDATE operations.';
 
 -- Attach updated_at trigger to tables with updated_at column
+DROP TRIGGER IF EXISTS set_profiles_updated_at ON public.profiles;
 CREATE TRIGGER set_profiles_updated_at
     BEFORE UPDATE ON public.profiles
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS set_devices_updated_at ON public.devices;
 CREATE TRIGGER set_devices_updated_at
     BEFORE UPDATE ON public.devices
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS set_conversations_updated_at ON public.conversations;
 CREATE TRIGGER set_conversations_updated_at
     BEFORE UPDATE ON public.conversations
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS set_message_deliveries_updated_at ON public.message_deliveries;
 CREATE TRIGGER set_message_deliveries_updated_at
     BEFORE UPDATE ON public.message_deliveries
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS set_push_tokens_updated_at ON public.push_tokens;
 CREATE TRIGGER set_push_tokens_updated_at
     BEFORE UPDATE ON public.push_tokens
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS set_encryption_keys_metadata_updated_at ON public.encryption_keys_metadata;
 CREATE TRIGGER set_encryption_keys_metadata_updated_at
     BEFORE UPDATE ON public.encryption_keys_metadata
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();

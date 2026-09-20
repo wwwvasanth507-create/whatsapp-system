@@ -141,94 +141,147 @@ CREATE INDEX IF NOT EXISTS idx_encryption_keys_metadata_user_id ON public.encryp
 -- PROFILES
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_read_own_profile" ON public.profiles;
 CREATE POLICY "users_read_own_profile" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "users_update_own_profile" ON public.profiles;
 CREATE POLICY "users_update_own_profile" ON public.profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "users_insert_own_profile" ON public.profiles;
 CREATE POLICY "users_insert_own_profile" ON public.profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
 
 -- DEVICES
 ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_select_own_devices" ON public.devices;
 CREATE POLICY "users_select_own_devices" ON public.devices FOR SELECT TO authenticated USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_insert_own_devices" ON public.devices;
 CREATE POLICY "users_insert_own_devices" ON public.devices FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_update_own_devices" ON public.devices;
 CREATE POLICY "users_update_own_devices" ON public.devices FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_delete_own_devices" ON public.devices;
 CREATE POLICY "users_delete_own_devices" ON public.devices FOR DELETE TO authenticated USING (user_id = auth.uid());
 
 -- CONVERSATIONS
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_select_joined_conversations" ON public.conversations;
 CREATE POLICY "users_select_joined_conversations" ON public.conversations FOR SELECT TO authenticated
     USING (EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = conversations.id AND cm.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "authenticated_insert_conversations" ON public.conversations;
 CREATE POLICY "authenticated_insert_conversations" ON public.conversations FOR INSERT TO authenticated WITH CHECK (auth.role() = 'authenticated');
 
 -- CONVERSATION_MEMBERS
 ALTER TABLE public.conversation_members ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_select_conversation_members" ON public.conversation_members;
 CREATE POLICY "users_select_conversation_members" ON public.conversation_members FOR SELECT TO authenticated
     USING (user_id = auth.uid() OR EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = conversation_members.conversation_id AND cm.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "users_insert_conversation_members" ON public.conversation_members;
 CREATE POLICY "users_insert_conversation_members" ON public.conversation_members FOR INSERT TO authenticated
     WITH CHECK (user_id = auth.uid() OR EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = conversation_members.conversation_id AND cm.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "users_delete_own_conversation_membership" ON public.conversation_members;
 CREATE POLICY "users_delete_own_conversation_membership" ON public.conversation_members FOR DELETE TO authenticated USING (user_id = auth.uid());
 
 -- MESSAGES
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_select_conversation_messages" ON public.messages;
 CREATE POLICY "users_select_conversation_messages" ON public.messages FOR SELECT TO authenticated
     USING (EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = messages.conversation_id AND cm.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "users_insert_own_messages" ON public.messages;
 CREATE POLICY "users_insert_own_messages" ON public.messages FOR INSERT TO authenticated
     WITH CHECK (sender_id = auth.uid() AND EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id = messages.conversation_id AND cm.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "users_update_own_messages" ON public.messages;
 CREATE POLICY "users_update_own_messages" ON public.messages FOR UPDATE TO authenticated USING (sender_id = auth.uid()) WITH CHECK (sender_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_delete_own_messages" ON public.messages;
 CREATE POLICY "users_delete_own_messages" ON public.messages FOR DELETE TO authenticated USING (sender_id = auth.uid());
 
 -- MESSAGE_DELIVERIES
 ALTER TABLE public.message_deliveries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_select_message_deliveries" ON public.message_deliveries;
 CREATE POLICY "users_select_message_deliveries" ON public.message_deliveries FOR SELECT TO authenticated
     USING (recipient_id = auth.uid() OR EXISTS (SELECT 1 FROM public.messages m WHERE m.id = message_deliveries.message_id AND m.sender_id = auth.uid()));
+
+DROP POLICY IF EXISTS "senders_insert_message_deliveries" ON public.message_deliveries;
 CREATE POLICY "senders_insert_message_deliveries" ON public.message_deliveries FOR INSERT TO authenticated
     WITH CHECK (EXISTS (SELECT 1 FROM public.messages m WHERE m.id = message_deliveries.message_id AND m.sender_id = auth.uid()));
+
+DROP POLICY IF EXISTS "recipients_update_message_deliveries" ON public.message_deliveries;
 CREATE POLICY "recipients_update_message_deliveries" ON public.message_deliveries FOR UPDATE TO authenticated USING (recipient_id = auth.uid()) WITH CHECK (recipient_id = auth.uid());
 
 -- ENCRYPTED_FILES
 ALTER TABLE public.encrypted_files ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_select_encrypted_files" ON public.encrypted_files;
 CREATE POLICY "users_select_encrypted_files" ON public.encrypted_files FOR SELECT TO authenticated
     USING (EXISTS (SELECT 1 FROM public.messages m JOIN public.conversation_members cm ON m.conversation_id = cm.conversation_id WHERE m.id = encrypted_files.message_id AND cm.user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "senders_insert_encrypted_files" ON public.encrypted_files;
 CREATE POLICY "senders_insert_encrypted_files" ON public.encrypted_files FOR INSERT TO authenticated
     WITH CHECK (EXISTS (SELECT 1 FROM public.messages m WHERE m.id = encrypted_files.message_id AND m.sender_id = auth.uid()));
+
+DROP POLICY IF EXISTS "senders_delete_encrypted_files" ON public.encrypted_files;
 CREATE POLICY "senders_delete_encrypted_files" ON public.encrypted_files FOR DELETE TO authenticated
     USING (EXISTS (SELECT 1 FROM public.messages m WHERE m.id = encrypted_files.message_id AND m.sender_id = auth.uid()));
 
 -- PUSH_TOKENS
 ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_select_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_select_own_push_tokens" ON public.push_tokens FOR SELECT TO authenticated USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_insert_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_insert_own_push_tokens" ON public.push_tokens FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_update_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_update_own_push_tokens" ON public.push_tokens FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_delete_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_delete_own_push_tokens" ON public.push_tokens FOR DELETE TO authenticated USING (user_id = auth.uid());
 
 -- ENCRYPTION_KEYS_METADATA
 ALTER TABLE public.encryption_keys_metadata ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "authenticated_select_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "authenticated_select_public_keys" ON public.encryption_keys_metadata FOR SELECT TO authenticated USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "users_insert_own_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "users_insert_own_public_keys" ON public.encryption_keys_metadata FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_update_own_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "users_update_own_public_keys" ON public.encryption_keys_metadata FOR UPDATE TO authenticated USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "users_delete_own_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "users_delete_own_public_keys" ON public.encryption_keys_metadata FOR DELETE TO authenticated USING (user_id = auth.uid());
 
 -- -----------------------------------------------------------------------------
 -- SECTION 5: STORAGE BUCKET & STORAGE RLS
+-- Note: RLS is enabled on storage.objects by default in Supabase (owned by storage admin).
 -- -----------------------------------------------------------------------------
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('encrypted_temp_files', 'encrypted_temp_files', false, 52428800, NULL)
 ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = EXCLUDED.file_size_limit;
 
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
+DROP POLICY IF EXISTS "authenticated_select_encrypted_storage" ON storage.objects;
 CREATE POLICY "authenticated_select_encrypted_storage" ON storage.objects FOR SELECT TO authenticated
     USING (bucket_id = 'encrypted_temp_files' AND ((storage.foldername(name))[1] = auth.uid()::text OR EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id::text = (storage.foldername(name))[1] AND cm.user_id = auth.uid())));
 
+DROP POLICY IF EXISTS "authenticated_insert_encrypted_storage" ON storage.objects;
 CREATE POLICY "authenticated_insert_encrypted_storage" ON storage.objects FOR INSERT TO authenticated
     WITH CHECK (bucket_id = 'encrypted_temp_files' AND ((storage.foldername(name))[1] = auth.uid()::text OR EXISTS (SELECT 1 FROM public.conversation_members cm WHERE cm.conversation_id::text = (storage.foldername(name))[1] AND cm.user_id = auth.uid())));
 
+DROP POLICY IF EXISTS "authenticated_delete_encrypted_storage" ON storage.objects;
 CREATE POLICY "authenticated_delete_encrypted_storage" ON storage.objects FOR DELETE TO authenticated
     USING (bucket_id = 'encrypted_temp_files' AND (owner = auth.uid() OR (storage.foldername(name))[1] = auth.uid()::text));
 
@@ -268,11 +321,22 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS set_profiles_updated_at ON public.profiles;
 CREATE TRIGGER set_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_devices_updated_at ON public.devices;
 CREATE TRIGGER set_devices_updated_at BEFORE UPDATE ON public.devices FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_conversations_updated_at ON public.conversations;
 CREATE TRIGGER set_conversations_updated_at BEFORE UPDATE ON public.conversations FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_message_deliveries_updated_at ON public.message_deliveries;
 CREATE TRIGGER set_message_deliveries_updated_at BEFORE UPDATE ON public.message_deliveries FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_push_tokens_updated_at ON public.push_tokens;
 CREATE TRIGGER set_push_tokens_updated_at BEFORE UPDATE ON public.push_tokens FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS set_encryption_keys_metadata_updated_at ON public.encryption_keys_metadata;
 CREATE TRIGGER set_encryption_keys_metadata_updated_at BEFORE UPDATE ON public.encryption_keys_metadata FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 COMMIT;

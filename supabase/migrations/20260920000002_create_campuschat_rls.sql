@@ -6,14 +6,14 @@
 --------------------------------------------------------------------------------
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Rule: Users can read only their own profile.
+DROP POLICY IF EXISTS "users_read_own_profile" ON public.profiles;
 CREATE POLICY "users_read_own_profile"
     ON public.profiles
     FOR SELECT
     TO authenticated
     USING (auth.uid() = id);
 
--- Rule: Users can update only their own profile.
+DROP POLICY IF EXISTS "users_update_own_profile" ON public.profiles;
 CREATE POLICY "users_update_own_profile"
     ON public.profiles
     FOR UPDATE
@@ -21,7 +21,7 @@ CREATE POLICY "users_update_own_profile"
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
 
--- Rule: Users can insert only their own profile.
+DROP POLICY IF EXISTS "users_insert_own_profile" ON public.profiles;
 CREATE POLICY "users_insert_own_profile"
     ON public.profiles
     FOR INSERT
@@ -33,19 +33,21 @@ CREATE POLICY "users_insert_own_profile"
 --------------------------------------------------------------------------------
 ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
 
--- Rule: Users can only manage (SELECT, INSERT, UPDATE, DELETE) their own devices.
+DROP POLICY IF EXISTS "users_select_own_devices" ON public.devices;
 CREATE POLICY "users_select_own_devices"
     ON public.devices
     FOR SELECT
     TO authenticated
     USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_insert_own_devices" ON public.devices;
 CREATE POLICY "users_insert_own_devices"
     ON public.devices
     FOR INSERT
     TO authenticated
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_update_own_devices" ON public.devices;
 CREATE POLICY "users_update_own_devices"
     ON public.devices
     FOR UPDATE
@@ -53,6 +55,7 @@ CREATE POLICY "users_update_own_devices"
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_delete_own_devices" ON public.devices;
 CREATE POLICY "users_delete_own_devices"
     ON public.devices
     FOR DELETE
@@ -64,7 +67,7 @@ CREATE POLICY "users_delete_own_devices"
 --------------------------------------------------------------------------------
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 
--- Rule: Users can read only conversations they belong to.
+DROP POLICY IF EXISTS "users_select_joined_conversations" ON public.conversations;
 CREATE POLICY "users_select_joined_conversations"
     ON public.conversations
     FOR SELECT
@@ -78,7 +81,7 @@ CREATE POLICY "users_select_joined_conversations"
         )
     );
 
--- Rule: Authenticated users can create new conversations.
+DROP POLICY IF EXISTS "authenticated_insert_conversations" ON public.conversations;
 CREATE POLICY "authenticated_insert_conversations"
     ON public.conversations
     FOR INSERT
@@ -90,7 +93,7 @@ CREATE POLICY "authenticated_insert_conversations"
 --------------------------------------------------------------------------------
 ALTER TABLE public.conversation_members ENABLE ROW LEVEL SECURITY;
 
--- Rule: Users can read members of conversations they belong to.
+DROP POLICY IF EXISTS "users_select_conversation_members" ON public.conversation_members;
 CREATE POLICY "users_select_conversation_members"
     ON public.conversation_members
     FOR SELECT
@@ -105,7 +108,7 @@ CREATE POLICY "users_select_conversation_members"
         )
     );
 
--- Rule: Users can join conversations or add members to conversations they belong to.
+DROP POLICY IF EXISTS "users_insert_conversation_members" ON public.conversation_members;
 CREATE POLICY "users_insert_conversation_members"
     ON public.conversation_members
     FOR INSERT
@@ -120,7 +123,7 @@ CREATE POLICY "users_insert_conversation_members"
         )
     );
 
--- Rule: Users can leave conversations (delete their own membership).
+DROP POLICY IF EXISTS "users_delete_own_conversation_membership" ON public.conversation_members;
 CREATE POLICY "users_delete_own_conversation_membership"
     ON public.conversation_members
     FOR DELETE
@@ -132,7 +135,7 @@ CREATE POLICY "users_delete_own_conversation_membership"
 --------------------------------------------------------------------------------
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
--- Rule: Users can read only messages belonging to their conversations.
+DROP POLICY IF EXISTS "users_select_conversation_messages" ON public.messages;
 CREATE POLICY "users_select_conversation_messages"
     ON public.messages
     FOR SELECT
@@ -146,7 +149,7 @@ CREATE POLICY "users_select_conversation_messages"
         )
     );
 
--- Rule: Users can insert messages only as sender_id = auth.uid() into conversations they belong to.
+DROP POLICY IF EXISTS "users_insert_own_messages" ON public.messages;
 CREATE POLICY "users_insert_own_messages"
     ON public.messages
     FOR INSERT
@@ -161,7 +164,7 @@ CREATE POLICY "users_insert_own_messages"
         )
     );
 
--- Rule: Users cannot modify messages belonging to other users (update/delete restricted to sender).
+DROP POLICY IF EXISTS "users_update_own_messages" ON public.messages;
 CREATE POLICY "users_update_own_messages"
     ON public.messages
     FOR UPDATE
@@ -169,6 +172,7 @@ CREATE POLICY "users_update_own_messages"
     USING (sender_id = auth.uid())
     WITH CHECK (sender_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_delete_own_messages" ON public.messages;
 CREATE POLICY "users_delete_own_messages"
     ON public.messages
     FOR DELETE
@@ -180,7 +184,7 @@ CREATE POLICY "users_delete_own_messages"
 --------------------------------------------------------------------------------
 ALTER TABLE public.message_deliveries ENABLE ROW LEVEL SECURITY;
 
--- Rule: Recipients can view deliveries assigned to them, and senders can view delivery statuses of their sent messages.
+DROP POLICY IF EXISTS "users_select_message_deliveries" ON public.message_deliveries;
 CREATE POLICY "users_select_message_deliveries"
     ON public.message_deliveries
     FOR SELECT
@@ -195,7 +199,7 @@ CREATE POLICY "users_select_message_deliveries"
         )
     );
 
--- Rule: Message sender can create delivery records for recipients.
+DROP POLICY IF EXISTS "senders_insert_message_deliveries" ON public.message_deliveries;
 CREATE POLICY "senders_insert_message_deliveries"
     ON public.message_deliveries
     FOR INSERT
@@ -209,7 +213,7 @@ CREATE POLICY "senders_insert_message_deliveries"
         )
     );
 
--- Rule: Recipient can update status (e.g. delivered_at, read_at) for their delivery records.
+DROP POLICY IF EXISTS "recipients_update_message_deliveries" ON public.message_deliveries;
 CREATE POLICY "recipients_update_message_deliveries"
     ON public.message_deliveries
     FOR UPDATE
@@ -222,7 +226,7 @@ CREATE POLICY "recipients_update_message_deliveries"
 --------------------------------------------------------------------------------
 ALTER TABLE public.encrypted_files ENABLE ROW LEVEL SECURITY;
 
--- Rule: Members of the conversation containing the linked message can read encrypted file metadata.
+DROP POLICY IF EXISTS "users_select_encrypted_files" ON public.encrypted_files;
 CREATE POLICY "users_select_encrypted_files"
     ON public.encrypted_files
     FOR SELECT
@@ -237,7 +241,7 @@ CREATE POLICY "users_select_encrypted_files"
         )
     );
 
--- Rule: Message sender can insert encrypted file metadata.
+DROP POLICY IF EXISTS "senders_insert_encrypted_files" ON public.encrypted_files;
 CREATE POLICY "senders_insert_encrypted_files"
     ON public.encrypted_files
     FOR INSERT
@@ -251,7 +255,7 @@ CREATE POLICY "senders_insert_encrypted_files"
         )
     );
 
--- Rule: Message sender can delete encrypted file metadata.
+DROP POLICY IF EXISTS "senders_delete_encrypted_files" ON public.encrypted_files;
 CREATE POLICY "senders_delete_encrypted_files"
     ON public.encrypted_files
     FOR DELETE
@@ -270,19 +274,21 @@ CREATE POLICY "senders_delete_encrypted_files"
 --------------------------------------------------------------------------------
 ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
 
--- Rule: Users can only manage (SELECT, INSERT, UPDATE, DELETE) their own push tokens.
+DROP POLICY IF EXISTS "users_select_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_select_own_push_tokens"
     ON public.push_tokens
     FOR SELECT
     TO authenticated
     USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_insert_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_insert_own_push_tokens"
     ON public.push_tokens
     FOR INSERT
     TO authenticated
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_update_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_update_own_push_tokens"
     ON public.push_tokens
     FOR UPDATE
@@ -290,6 +296,7 @@ CREATE POLICY "users_update_own_push_tokens"
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_delete_own_push_tokens" ON public.push_tokens;
 CREATE POLICY "users_delete_own_push_tokens"
     ON public.push_tokens
     FOR DELETE
@@ -301,20 +308,21 @@ CREATE POLICY "users_delete_own_push_tokens"
 --------------------------------------------------------------------------------
 ALTER TABLE public.encryption_keys_metadata ENABLE ROW LEVEL SECURITY;
 
--- Rule: Authenticated users can view public key metadata (for key agreement / session initialization).
+DROP POLICY IF EXISTS "authenticated_select_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "authenticated_select_public_keys"
     ON public.encryption_keys_metadata
     FOR SELECT
     TO authenticated
     USING (auth.role() = 'authenticated');
 
--- Rule: Users can only insert/update/delete their own public key metadata.
+DROP POLICY IF EXISTS "users_insert_own_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "users_insert_own_public_keys"
     ON public.encryption_keys_metadata
     FOR INSERT
     TO authenticated
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_update_own_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "users_update_own_public_keys"
     ON public.encryption_keys_metadata
     FOR UPDATE
@@ -322,6 +330,7 @@ CREATE POLICY "users_update_own_public_keys"
     USING (user_id = auth.uid())
     WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "users_delete_own_public_keys" ON public.encryption_keys_metadata;
 CREATE POLICY "users_delete_own_public_keys"
     ON public.encryption_keys_metadata
     FOR DELETE

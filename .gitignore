@@ -1,0 +1,50 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+build/
+app/build/
+
+# Gradle files
+.gradle/
+gradle-app.setting
+!.gradle/wrapper/gradle-wrapper.jar
+!.gradle/wrapper/gradle-wrapper.properties
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+
+# Local configuration file (contains SDK paths & sensitive keys)
+local.properties
+
+# Log Files
+*.log
+
+# Android Profiler / Captures
+captures/
+
+# NDK / C++ build outputs
+.externalNativeBuild
+.cxx/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Supabase CLI temporary files
+.supabase/

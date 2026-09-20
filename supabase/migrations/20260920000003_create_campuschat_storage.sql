@@ -18,14 +18,13 @@ SET public = false,
 
 --------------------------------------------------------------------------------
 -- 2. STORAGE RLS POLICIES FOR 'encrypted_temp_files'
+-- Note: RLS is enabled on storage.objects by default in Supabase.
 --------------------------------------------------------------------------------
-
--- Enable RLS on storage.objects (if not already enabled)
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 -- Policy 1: SELECT (Read/Download)
 -- Authenticated users can read objects from 'encrypted_temp_files' only if the object path is structured as '{conversation_id}/{message_id}/{filename}'
 -- and the user is a member of that conversation, OR if the file is in their user folder '{user_id}/...'.
+DROP POLICY IF EXISTS "authenticated_select_encrypted_storage" ON storage.objects;
 CREATE POLICY "authenticated_select_encrypted_storage"
     ON storage.objects
     FOR SELECT
@@ -48,6 +47,7 @@ CREATE POLICY "authenticated_select_encrypted_storage"
 
 -- Policy 2: INSERT (Upload)
 -- Users can upload files to 'encrypted_temp_files' into paths prefixed with their user_id or a conversation they belong to.
+DROP POLICY IF EXISTS "authenticated_insert_encrypted_storage" ON storage.objects;
 CREATE POLICY "authenticated_insert_encrypted_storage"
     ON storage.objects
     FOR INSERT
@@ -70,6 +70,7 @@ CREATE POLICY "authenticated_insert_encrypted_storage"
 
 -- Policy 3: DELETE
 -- Users can delete files in 'encrypted_temp_files' that they uploaded or own.
+DROP POLICY IF EXISTS "authenticated_delete_encrypted_storage" ON storage.objects;
 CREATE POLICY "authenticated_delete_encrypted_storage"
     ON storage.objects
     FOR DELETE
