@@ -21,6 +21,9 @@ object DeviceIdProvider {
      * Gets or creates a persistent UUID for this Android app installation.
      */
     fun getDeviceId(): String {
+        if (!::prefs.isInitialized) {
+            return "test-device-id"
+        }
         var deviceId = prefs.getString(KEY_DEVICE_ID, null)
         if (deviceId.isNullOrEmpty()) {
             deviceId = UUID.randomUUID().toString()
@@ -33,9 +36,9 @@ object DeviceIdProvider {
      * Returns a human-readable device name (e.g. "Google Pixel 7 (Android 14)").
      */
     fun getDeviceName(): String {
-        val manufacturer = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
-        val model = Build.MODEL
-        val release = Build.VERSION.RELEASE
+        val manufacturer = Build.MANUFACTURER?.replaceFirstChar { it.uppercase() } ?: "Android"
+        val model = Build.MODEL ?: "Device"
+        val release = Build.VERSION.RELEASE ?: "14"
         return "$manufacturer $model (Android $release)"
     }
 

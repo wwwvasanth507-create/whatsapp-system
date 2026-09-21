@@ -11,6 +11,7 @@ ktor = "2.3.9"
 kotlinxSerialization = "1.6.3"
 coroutines = "1.8.0"
 signalProtocol = "0.86.5"
+room = "2.6.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKt" }
@@ -40,6 +41,9 @@ ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref =
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 signal-protocol-android = { group = "org.signal", name = "libsignal-android", version.ref = "signalProtocol" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

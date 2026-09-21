@@ -47,13 +47,21 @@ class RegisterUseCase(
                 val user = authResult.data
                 val userId = user.id
 
-                // 2. Profile Creation in profiles table
+                // 2. Ensure active JWT session for RLS authorization
+                if (authRepository.getCurrentUser() == null) {
+                    val signInRes = authRepository.signIn(trimmedEmail, password)
+                    if (signInRes is Resource.Error) {
+                        return Resource.Error("Account created. Please sign in with your email and password.")
+                    }
+                }
+
+                // 3. Profile Creation in profiles table
                 val profileResult = profileRepository.createProfile(userId, trimmedUsername, trimmedDisplayName)
                 if (profileResult is Resource.Error) {
                     return Resource.Error("Auth succeeded, but profile creation failed: ${profileResult.message}")
                 }
 
-                // 3. Device Registration in devices table
+                // 4. Device Registration in devices table
                 val deviceId = DeviceIdProvider.getDeviceId()
                 val deviceName = DeviceIdProvider.getDeviceName()
                 val device = UserDevice(

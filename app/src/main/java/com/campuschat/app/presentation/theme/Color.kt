@@ -6,6 +6,9 @@ val DarkBackground = Color(0xFF121826)
 val DarkSurface = Color(0xFF1E293B)
 val DarkSurfaceVariant = Color(0xFF334155)
 
+val DarkCard = DarkSurface
+val DarkInput = DarkSurfaceVariant
+
 val PrimaryEmerald = Color(0xFF10B981)
 val PrimaryEmeraldDark = Color(0xFF059669)
 val PrimaryEmeraldLight = Color(0xFF6EE7B7)

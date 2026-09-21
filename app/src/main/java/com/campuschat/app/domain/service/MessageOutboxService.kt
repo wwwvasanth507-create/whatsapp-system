@@ -1,9 +1,12 @@
 package com.campuschat.app.domain.service
 
 import com.campuschat.app.core.result.Resource
+import com.campuschat.app.data.local.entity.MessageEntity
 import com.campuschat.app.domain.model.EncryptionResult
 import com.campuschat.app.domain.repository.AuthRepository
+import com.campuschat.app.domain.repository.LocalChatRepository
 import com.campuschat.app.domain.repository.MessageTransportRepository
+import java.util.UUID
 
 interface MessageOutboxService {
     suspend fun sendEncryptedTextMessage(
@@ -18,7 +21,8 @@ interface MessageOutboxService {
 class MessageOutboxServiceImpl(
     private val authRepository: AuthRepository,
     private val encryptedMessageService: EncryptedMessageService,
-    private val transportRepository: MessageTransportRepository
+    private val transportRepository: MessageTransportRepository,
+    private val localChatRepository: LocalChatRepository? = null
 ) : MessageOutboxService {
 
     override suspend fun sendEncryptedTextMessage(
@@ -31,6 +35,10 @@ class MessageOutboxServiceImpl(
         val currentUser = authRepository.getCurrentUser()
             ?: return Resource.Error("Authentication required")
 
+        val messageId = UUID.randomUUID().toString()
+        val conversationId = "${recipientUserId}_${recipientDeviceId}"
+        val timestamp = System.currentTimeMillis()
+
         val encryptResult = encryptedMessageService.encryptMessage(
             senderDeviceId = senderDeviceId,
             recipientUserId = recipientUserId,
@@ -42,8 +50,42 @@ class MessageOutboxServiceImpl(
         return when (encryptResult) {
             is EncryptionResult.Success -> {
                 when (val transportRes = transportRepository.enqueueEncryptedMessage(encryptResult.envelope)) {
-                    is Resource.Success -> Resource.Success(transportRes.data)
-                    is Resource.Error -> Resource.Error("Transport upload failed: ${transportRes.message}")
+                    is Resource.Success -> {
+                        localChatRepository?.saveMessage(
+                            MessageEntity(
+                                id = messageId,
+                                conversationId = conversationId,
+                                senderUserId = currentUser.id,
+                                senderDeviceId = senderDeviceId,
+                                recipientUserId = recipientUserId,
+                                recipientDeviceId = recipientDeviceId,
+                                direction = "SENT",
+                                content = plaintext,
+                                timestamp = timestamp,
+                                deliveryState = "SENT",
+                                readState = true
+                            )
+                        )
+                        Resource.Success(transportRes.data)
+                    }
+                    is Resource.Error -> {
+                        localChatRepository?.saveMessage(
+                            MessageEntity(
+                                id = messageId,
+                                conversationId = conversationId,
+                                senderUserId = currentUser.id,
+                                senderDeviceId = senderDeviceId,
+                                recipientUserId = recipientUserId,
+                                recipientDeviceId = recipientDeviceId,
+                                direction = "SENT",
+                                content = plaintext,
+                                timestamp = timestamp,
+                                deliveryState = "FAILED",
+                                readState = true
+                            )
+                        )
+                        Resource.Error("Transport upload failed: ${transportRes.message}")
+                    }
                     else -> Resource.Error("Transport upload failed")
                 }
             }

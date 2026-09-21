@@ -56,6 +56,13 @@ object SessionManager {
     }
 
     fun getCurrentUserId(): String? {
-        return supabaseClient.auth.currentUserOrNull()?.id
+        if (!::supabaseClient.isInitialized) {
+            return null
+        }
+        return try {
+            supabaseClient.auth.currentUserOrNull()?.id
+        } catch (e: Exception) {
+            null
+        }
     }
 }

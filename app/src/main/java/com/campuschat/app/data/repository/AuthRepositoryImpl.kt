@@ -17,6 +17,17 @@ class AuthRepositoryImpl(
                 this.email = email
                 this.password = password
             }
+            // Ensure session JWT is populated for RLS protected database tables
+            if (supabaseClient.auth.currentSessionOrNull() == null) {
+                try {
+                    supabaseClient.auth.signInWith(Email) {
+                        this.email = email
+                        this.password = password
+                    }
+                } catch (ignored: Exception) {
+                    // Ignored if email confirmation is required by Supabase Auth server settings
+                }
+            }
             val user = supabaseClient.auth.currentUserOrNull()
             if (user != null) {
                 Resource.Success(user)

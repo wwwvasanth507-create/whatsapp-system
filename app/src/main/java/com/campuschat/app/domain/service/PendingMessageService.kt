@@ -1,8 +1,10 @@
 package com.campuschat.app.domain.service
 
 import com.campuschat.app.core.result.Resource
+import com.campuschat.app.data.local.entity.MessageEntity
 import com.campuschat.app.domain.model.DecryptionResult
 import com.campuschat.app.domain.repository.AuthRepository
+import com.campuschat.app.domain.repository.LocalChatRepository
 import com.campuschat.app.domain.repository.MessageTransportRepository
 
 data class ReceivedMessageResult(
@@ -26,13 +28,14 @@ interface PendingMessageService {
 class PendingMessageServiceImpl(
     private val authRepository: AuthRepository,
     private val encryptedMessageService: EncryptedMessageService,
-    private val transportRepository: MessageTransportRepository
+    private val transportRepository: MessageTransportRepository,
+    private val localChatRepository: LocalChatRepository? = null
 ) : PendingMessageService {
 
     override suspend fun fetchAndDecryptPendingMessages(
         localDeviceId: String
     ): ProcessPendingResult {
-        authRepository.getCurrentUser()
+        val currentUser = authRepository.getCurrentUser()
             ?: return ProcessPendingResult.Error("Authentication required")
 
         val pendingRes = transportRepository.fetchPendingMessages(localDeviceId)
@@ -48,15 +51,32 @@ class PendingMessageServiceImpl(
             val decryptResult = encryptedMessageService.decryptMessage(pendingItem.envelope)
             when (decryptResult) {
                 is DecryptionResult.Success -> {
-                    decryptedMessages.add(
-                        ReceivedMessageResult(
-                            messageId = pendingItem.messageId,
+                    val received = ReceivedMessageResult(
+                        messageId = pendingItem.messageId,
+                        senderUserId = pendingItem.envelope.senderUserId,
+                        senderDeviceId = pendingItem.envelope.senderDeviceId,
+                        plaintext = decryptResult.plaintext
+                    )
+                    decryptedMessages.add(received)
+
+                    val conversationId = "${pendingItem.envelope.senderUserId}_${pendingItem.envelope.senderDeviceId}"
+                    localChatRepository?.saveMessage(
+                        MessageEntity(
+                            id = pendingItem.messageId,
+                            conversationId = conversationId,
                             senderUserId = pendingItem.envelope.senderUserId,
                             senderDeviceId = pendingItem.envelope.senderDeviceId,
-                            plaintext = decryptResult.plaintext
+                            recipientUserId = currentUser.id,
+                            recipientDeviceId = localDeviceId,
+                            direction = "RECEIVED",
+                            content = decryptResult.plaintext,
+                            timestamp = System.currentTimeMillis(),
+                            deliveryState = "DELIVERED",
+                            readState = false
                         )
                     )
-                    // DELETE-AFTER-SUCCESS: Acknowledge server only after successful local decryption
+
+                    // DELETE-AFTER-SUCCESS: Acknowledge server only after successful local decryption & persistence
                     transportRepository.acknowledgeMessage(pendingItem.messageId)
                 }
                 is DecryptionResult.DuplicateOrAlreadyProcessed -> {

@@ -4,6 +4,7 @@ import android.app.Application
 import com.campuschat.app.core.device.DeviceIdProvider
 import com.campuschat.app.core.network.SupabaseClientProvider
 import com.campuschat.app.core.session.SessionManager
+import com.campuschat.app.presentation.navigation.AppViewModelFactory
 
 class CampusChatApp : Application() {
 
@@ -18,5 +19,11 @@ class CampusChatApp : Application() {
 
         // 3. Initialize SessionManager for persistent session tracking
         SessionManager.init(SupabaseClientProvider.client)
+
+        // 4. Initialize AppViewModelFactory with application context
+        AppViewModelFactory.init(this)
+
+        // 5. Start observing Supabase Realtime notifications
+        AppViewModelFactory.realtimeMessageObserver?.startObserving()
     }
 }

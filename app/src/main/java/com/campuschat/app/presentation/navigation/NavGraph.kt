@@ -3,13 +3,19 @@ package com.campuschat.app.presentation.navigation
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.campuschat.app.presentation.auth.login.LoginScreen
 import com.campuschat.app.presentation.auth.login.LoginViewModel
 import com.campuschat.app.presentation.auth.register.RegisterScreen
 import com.campuschat.app.presentation.auth.register.RegisterViewModel
+import com.campuschat.app.presentation.chat.conversation.ConversationScreen
+import com.campuschat.app.presentation.chat.conversation.ConversationViewModel
+import com.campuschat.app.presentation.chat.newchat.NewChatScreen
+import com.campuschat.app.presentation.chat.newchat.NewChatViewModel
 import com.campuschat.app.presentation.home.HomeScreen
 import com.campuschat.app.presentation.home.HomeViewModel
 import com.campuschat.app.presentation.profile.ProfileScreen
@@ -82,11 +88,54 @@ fun NavGraph(
             val homeViewModel: HomeViewModel = viewModel(factory = AppViewModelFactory.provideHomeViewModelFactory())
             HomeScreen(
                 viewModel = homeViewModel,
+                onNavigateToNewChat = {
+                    navController.navigate(Screen.NewChat.route)
+                },
+                onNavigateToConversation = { recipientUserId, recipientDeviceId ->
+                    navController.navigate(Screen.Conversation.createRoute(recipientUserId, recipientDeviceId))
+                },
                 onNavigateToProfile = {
                     navController.navigate(Screen.Profile.route)
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                }
+            )
+        }
+
+        composable(Screen.NewChat.route) {
+            val newChatViewModel: NewChatViewModel = viewModel(factory = AppViewModelFactory.provideNewChatViewModelFactory())
+            NewChatScreen(
+                viewModel = newChatViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onSelectRecipientDevice = { recipientUserId, recipientDeviceId ->
+                    navController.navigate(Screen.Conversation.createRoute(recipientUserId, recipientDeviceId)) {
+                        popUpTo(Screen.NewChat.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Screen.Conversation.route,
+            arguments = listOf(
+                navArgument("recipientUserId") { type = NavType.StringType },
+                navArgument("recipientDeviceId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val recipientUserId = backStackEntry.arguments?.getString("recipientUserId") ?: ""
+            val recipientDeviceId = backStackEntry.arguments?.getString("recipientDeviceId") ?: ""
+
+            val conversationViewModel: ConversationViewModel = viewModel(
+                factory = AppViewModelFactory.provideConversationViewModelFactory(recipientUserId, recipientDeviceId)
+            )
+
+            ConversationScreen(
+                viewModel = conversationViewModel,
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
