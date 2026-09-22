@@ -20,8 +20,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,11 +33,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +64,75 @@ fun ConversationScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    var showMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showClearDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showDeleteDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    val pendingOutboxCount = uiState.messages.count { it.isFromSelf && it.deliveryState in listOf("QUEUED", "PENDING", "ENCRYPTING", "UPLOADING", "FAILED") }
+
+    if (showClearDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            containerColor = DarkCard,
+            title = { Text("Clear Chat History?", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            text = {
+                Text(
+                    text = "Are you sure you want to clear all local messages in this conversation with ${uiState.recipientDisplayName}? The contact entry will remain.",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        showClearDialog = false
+                        viewModel.clearChatHistory()
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = PrimaryEmerald, contentColor = DarkBackground)
+                ) {
+                    Text("Clear History", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showClearDialog = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            containerColor = DarkCard,
+            title = { Text("Delete Chat?", fontWeight = FontWeight.Bold, color = TextPrimary) },
+            text = {
+                val outboxWarning = if (pendingOutboxCount > 0) "\n\nWarning: $pendingOutboxCount unsent/queued outbound message(s) will be canceled and removed from your outbox." else ""
+                Text(
+                    text = "Are you sure you want to delete this chat with ${uiState.recipientDisplayName}? All local messages and the conversation entry will be permanently removed from this device.$outboxWarning",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deleteConversation(onComplete = onNavigateBack)
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Red)
+                ) {
+                    Text("Delete Chat", color = androidx.compose.ui.graphics.Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            }
+        )
+    }
 
     Scaffold(
         containerColor = DarkBackground,
@@ -109,6 +186,37 @@ fun ConversationScreen(
                             contentDescription = "Back",
                             tint = TextPrimary
                         )
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.MoreVert,
+                                contentDescription = "Chat Options",
+                                tint = TextPrimary
+                            )
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(DarkCard)
+                        ) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Clear Chat History", color = TextPrimary) },
+                                onClick = {
+                                    showMenu = false
+                                    showClearDialog = true
+                                }
+                            )
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Delete Chat", color = androidx.compose.ui.graphics.Color.Red) },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)

@@ -88,6 +88,25 @@ class LocalChatPersistenceTest {
                 it.localAccountId == localAccountId && it.deliveryState in listOf("QUEUED", "PENDING", "FAILED")
             }.sortedBy { it.timestamp }
         }
+
+        override suspend fun clearChatHistory(localAccountId: String, recipientUserId: String, recipientDeviceId: String) {
+            val keysToRemove = messages.filterValues {
+                (localAccountId.isBlank() || it.localAccountId == localAccountId) &&
+                it.recipientUserId == recipientUserId && it.recipientDeviceId == recipientDeviceId
+            }.keys
+            keysToRemove.forEach { messages.remove(it) }
+            messagesFlow.value = messages.toMap()
+        }
+
+        override suspend fun deleteConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String) {
+            clearChatHistory(localAccountId, recipientUserId, recipientDeviceId)
+            val convKeysToRemove = conversations.filterValues {
+                (localAccountId.isBlank() || it.localAccountId == localAccountId) &&
+                it.recipientUserId == recipientUserId && it.recipientDeviceId == recipientDeviceId
+            }.keys
+            convKeysToRemove.forEach { conversations.remove(it) }
+            conversationsFlow.value = conversations.toMap()
+        }
     }
 
     // Requirement 1: Conversation is scoped to authenticated account

@@ -14,4 +14,6 @@ interface LocalChatRepository {
     suspend fun updateMessageDeliveryState(messageId: String, deliveryState: String)
     suspend fun getMessageById(messageId: String): MessageEntity?
     suspend fun getPendingOutboundMessages(localAccountId: String): List<MessageEntity>
+    suspend fun clearChatHistory(localAccountId: String, recipientUserId: String, recipientDeviceId: String)
+    suspend fun deleteConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String)
 }

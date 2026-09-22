@@ -21,19 +21,27 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -238,7 +246,8 @@ fun HomeScreen(
                         items(uiState.conversations) { item ->
                             ConversationItemRow(
                                 item = item,
-                                onClick = { onNavigateToConversation(item.recipientUserId, item.recipientDeviceId) }
+                                onClick = { onNavigateToConversation(item.recipientUserId, item.recipientDeviceId) },
+                                onDelete = { viewModel.deleteConversation(item.recipientUserId, item.recipientDeviceId) }
                             )
                         }
                     }
@@ -251,8 +260,49 @@ fun HomeScreen(
 @Composable
 private fun ConversationItemRow(
     item: ConversationListItem,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onDelete: () -> Unit
 ) {
+    var showMenu by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showDeleteDialog by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            containerColor = DarkCard,
+            title = {
+                Text(
+                    text = "Delete Chat?",
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to delete this conversation with ${item.recipientDisplayName}? Local chat history will be removed from this device.",
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Red)
+                ) {
+                    Text("Delete", color = androidx.compose.ui.graphics.Color.White)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            }
+        )
+    }
+
     CampusChatCard(
         modifier = Modifier
             .fillMaxWidth()
@@ -303,12 +353,40 @@ private fun ConversationItemRow(
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
-                if (item.timestamp != null) {
-                    Text(
-                        text = item.timestamp,
-                        fontSize = 11.sp,
-                        color = TextMuted
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (item.timestamp != null) {
+                        Text(
+                            text = item.timestamp,
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    }
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.material.icons.Icons.Default.MoreVert,
+                                contentDescription = "More Options",
+                                tint = TextMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(DarkCard)
+                        ) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text("Delete Chat", color = androidx.compose.ui.graphics.Color.Red) },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
+                    }
                 }
                 if (item.unreadCount > 0) {
                     Spacer(modifier = Modifier.height(4.dp))

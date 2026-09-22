@@ -27,4 +27,10 @@ interface ConversationDao {
 
     @Query("DELETE FROM conversations WHERE id = :conversationId")
     suspend fun deleteConversation(conversationId: String)
+
+    @Query("DELETE FROM conversations WHERE localAccountId = :localAccountId AND id = :conversationId")
+    suspend fun deleteConversationForAccount(localAccountId: String, conversationId: String)
+
+    @Query("UPDATE conversations SET lastMessageSnippet = '', unreadCount = 0 WHERE localAccountId = :localAccountId AND id = :conversationId")
+    suspend fun clearConversationSummary(localAccountId: String, conversationId: String)
 }

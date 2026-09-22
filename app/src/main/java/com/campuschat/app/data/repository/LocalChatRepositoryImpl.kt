@@ -74,4 +74,25 @@ class LocalChatRepositoryImpl(
     override suspend fun getPendingOutboundMessages(localAccountId: String): List<MessageEntity> {
         return messageDao.getPendingOutboundMessages(localAccountId)
     }
+
+    override suspend fun clearChatHistory(localAccountId: String, recipientUserId: String, recipientDeviceId: String) {
+        val conversationId = if (localAccountId.isNotBlank()) "${localAccountId}_${recipientUserId}_${recipientDeviceId}" else "${recipientUserId}_${recipientDeviceId}"
+        if (localAccountId.isNotBlank()) {
+            messageDao.deleteMessagesForAccountAndConversation(localAccountId, conversationId)
+            conversationDao.clearConversationSummary(localAccountId, conversationId)
+        } else {
+            messageDao.deleteMessagesForConversation(conversationId)
+        }
+    }
+
+    override suspend fun deleteConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String) {
+        val conversationId = if (localAccountId.isNotBlank()) "${localAccountId}_${recipientUserId}_${recipientDeviceId}" else "${recipientUserId}_${recipientDeviceId}"
+        if (localAccountId.isNotBlank()) {
+            messageDao.deleteMessagesForAccountAndConversation(localAccountId, conversationId)
+            conversationDao.deleteConversationForAccount(localAccountId, conversationId)
+        } else {
+            messageDao.deleteMessagesForConversation(conversationId)
+            conversationDao.deleteConversation(conversationId)
+        }
+    }
 }

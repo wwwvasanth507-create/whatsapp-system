@@ -93,4 +93,12 @@ class HomeViewModel(
             _uiState.value = _uiState.value.copy(isLoading = false)
         }
     }
+
+    fun deleteConversation(recipientUserId: String, recipientDeviceId: String) {
+        val repo = localChatRepository ?: return
+        val localAccountId = SessionManager.getCurrentUserId() ?: ""
+        viewModelScope.launch {
+            repo.deleteConversation(localAccountId, recipientUserId, recipientDeviceId)
+        }
+    }
 }

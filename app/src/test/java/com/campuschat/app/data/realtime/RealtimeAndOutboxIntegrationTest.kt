@@ -545,4 +545,25 @@ private class TestLocalChatRepository : LocalChatRepository {
             it.localAccountId == localAccountId && it.deliveryState in listOf("QUEUED", "PENDING", "FAILED")
         }.sortedBy { it.timestamp }
     }
+
+    override suspend fun clearChatHistory(localAccountId: String, recipientUserId: String, recipientDeviceId: String) {
+        val currentMsgs = messagesFlow.value.toMutableMap()
+        val keysToRemove = currentMsgs.filterValues {
+            (localAccountId.isBlank() || it.localAccountId == localAccountId) &&
+            it.recipientUserId == recipientUserId && it.recipientDeviceId == recipientDeviceId
+        }.keys
+        keysToRemove.forEach { currentMsgs.remove(it) }
+        messagesFlow.value = currentMsgs
+    }
+
+    override suspend fun deleteConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String) {
+        clearChatHistory(localAccountId, recipientUserId, recipientDeviceId)
+        val currentConvs = conversationsFlow.value.toMutableMap()
+        val keysToRemove = currentConvs.filterValues {
+            (localAccountId.isBlank() || it.localAccountId == localAccountId) &&
+            it.recipientUserId == recipientUserId && it.recipientDeviceId == recipientDeviceId
+        }.keys
+        keysToRemove.forEach { currentConvs.remove(it) }
+        conversationsFlow.value = currentConvs
+    }
 }

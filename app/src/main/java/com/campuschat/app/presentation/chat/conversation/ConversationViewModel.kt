@@ -214,4 +214,21 @@ class ConversationViewModel(
             }
         }
     }
+
+    fun clearChatHistory() {
+        val repo = localChatRepository ?: return
+        val currentUserId = com.campuschat.app.core.session.SessionManager.getCurrentUserId() ?: ""
+        viewModelScope.launch {
+            repo.clearChatHistory(currentUserId, recipientUserId, recipientDeviceId)
+        }
+    }
+
+    fun deleteConversation(onComplete: () -> Unit = {}) {
+        val repo = localChatRepository
+        val currentUserId = com.campuschat.app.core.session.SessionManager.getCurrentUserId() ?: ""
+        viewModelScope.launch {
+            repo?.deleteConversation(currentUserId, recipientUserId, recipientDeviceId)
+            onComplete()
+        }
+    }
 }
