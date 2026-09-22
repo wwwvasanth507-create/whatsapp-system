@@ -112,7 +112,7 @@ fun HomeScreen(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "CampusChat",
+                                    text = "KUTTYCHAT",
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextPrimary
@@ -278,12 +278,23 @@ private fun ConversationItemRow(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.recipientDisplayName,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = item.recipientDisplayName,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    if (item.recipientUsername.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "@${item.recipientUsername}",
+                            fontSize = 12.sp,
+                            color = TextMuted
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = item.lastMessagePreview ?: "Encrypted Signal message",
                     fontSize = 13.sp,
@@ -291,12 +302,31 @@ private fun ConversationItemRow(
                     maxLines = 1
                 )
             }
-            if (item.timestamp != null) {
-                Text(
-                    text = item.timestamp,
-                    fontSize = 11.sp,
-                    color = TextMuted
-                )
+            Column(horizontalAlignment = Alignment.End) {
+                if (item.timestamp != null) {
+                    Text(
+                        text = item.timestamp,
+                        fontSize = 11.sp,
+                        color = TextMuted
+                    )
+                }
+                if (item.unreadCount > 0) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(PrimaryEmerald)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = item.unreadCount.toString(),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = DarkBackground
+                        )
+                    }
+                }
             }
         }
     }

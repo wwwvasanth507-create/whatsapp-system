@@ -2,6 +2,9 @@ package com.campuschat.app.core.crypto
 
 import android.content.Context
 import org.signal.libsignal.protocol.ecc.ECKeyPair
+import org.signal.libsignal.protocol.kem.KEMKeyPair
+import org.signal.libsignal.protocol.kem.KEMKeyType
+import org.signal.libsignal.protocol.state.KyberPreKeyRecord
 import org.signal.libsignal.protocol.state.PreKeyRecord
 import org.signal.libsignal.protocol.state.SignedPreKeyRecord
 import java.io.File
@@ -11,11 +14,14 @@ interface PreKeyManager {
     fun getCurrentSignedPreKey(deviceId: String): SignedPreKeyRecord?
     fun getSignedPreKey(deviceId: String, keyId: Int): SignedPreKeyRecord?
     fun rotateSignedPreKey(deviceId: String): SignedPreKeyRecord
+    fun getCurrentKyberPreKey(deviceId: String): KyberPreKeyRecord?
+    fun getKyberPreKey(deviceId: String, keyId: Int): KyberPreKeyRecord?
     fun getAvailableOneTimePreKeyCount(deviceId: String): Int
     fun getAvailableOneTimePreKeys(deviceId: String): List<PreKeyRecord>
     fun replenishOneTimePreKeys(deviceId: String): Int
     fun consumeLocalOneTimePreKey(deviceId: String, keyId: Int): PreKeyRecord?
     fun hasSignedPreKey(deviceId: String, keyId: Int): Boolean
+    fun hasKyberPreKey(deviceId: String, keyId: Int): Boolean
     fun hasOneTimePreKey(deviceId: String, keyId: Int): Boolean
     fun clearPreKeys()
 }
@@ -52,6 +58,26 @@ class PreKeyManagerImpl(
 
         val loaded = preKeyStore.loadPayload(deviceId)
         if (loaded != null && loaded.deviceId == deviceId) {
+            if (loaded.kyberPreKeys.isEmpty()) {
+                val identityKeyPair = identityKeyManager.getOrGenerateIdentity(deviceId)
+                val timestamp = System.currentTimeMillis()
+                val kemKeyPair = KEMKeyPair.generate(KEMKeyType.KYBER_1024)
+                val kyberSig = identityKeyPair.privateKey.calculateSignature(kemKeyPair.publicKey.serialize())
+                val initialKyberRecord = KyberPreKeyRecord(1, timestamp, kemKeyPair, kyberSig)
+                val storedKyber = StoredKyberPreKey(
+                    id = 1,
+                    timestamp = timestamp,
+                    isCurrent = true,
+                    recordBytes = initialKyberRecord.serialize()
+                )
+                val updatedLoaded = loaded.copy(
+                    lastKyberPreKeyId = 1,
+                    kyberPreKeys = listOf(storedKyber)
+                )
+                preKeyStore.savePayload(updatedLoaded)
+                cachedPayload = updatedLoaded
+                return updatedLoaded
+            }
             cachedPayload = loaded
             return loaded
         }
@@ -77,7 +103,18 @@ class PreKeyManagerImpl(
             recordBytes = initialSpkRecord.serialize()
         )
 
-        // 2. Generate Initial Pool of OneTimePreKeys (IDs = 1..100)
+        // 2. Generate Initial KyberPreKey (ID = 1)
+        val kemKeyPair = KEMKeyPair.generate(KEMKeyType.KYBER_1024)
+        val kyberSig = identityKeyPair.privateKey.calculateSignature(kemKeyPair.publicKey.serialize())
+        val initialKyberRecord = KyberPreKeyRecord(1, timestamp, kemKeyPair, kyberSig)
+        val storedKyber = StoredKyberPreKey(
+            id = 1,
+            timestamp = timestamp,
+            isCurrent = true,
+            recordBytes = initialKyberRecord.serialize()
+        )
+
+        // 3. Generate Initial Pool of OneTimePreKeys (IDs = 1..100)
         val storedOpks = ArrayList<StoredOneTimePreKey>(INITIAL_ONE_TIME_PREKEY_COUNT)
         for (i in 1..INITIAL_ONE_TIME_PREKEY_COUNT) {
             val opkKeyPair = ECKeyPair.generate()
@@ -97,7 +134,9 @@ class PreKeyManagerImpl(
             deviceId = deviceId,
             lastSignedPreKeyId = 1,
             lastOneTimePreKeyId = INITIAL_ONE_TIME_PREKEY_COUNT,
+            lastKyberPreKeyId = 1,
             signedPreKeys = listOf(storedSpk),
+            kyberPreKeys = listOf(storedKyber),
             oneTimePreKeys = storedOpks
         )
     }
@@ -162,6 +201,19 @@ class PreKeyManagerImpl(
         cachedPayload = newPayload
 
         return newSpkRecord
+    }
+
+    @Synchronized
+    override fun getCurrentKyberPreKey(deviceId: String): KyberPreKeyRecord? {
+        val payload = getOrLoadPayload(deviceId)
+        return payload.kyberPreKeys.firstOrNull { it.isCurrent }?.toRecord()
+            ?: payload.kyberPreKeys.lastOrNull()?.toRecord()
+    }
+
+    @Synchronized
+    override fun getKyberPreKey(deviceId: String, keyId: Int): KyberPreKeyRecord? {
+        val payload = getOrLoadPayload(deviceId)
+        return payload.kyberPreKeys.firstOrNull { it.id == keyId }?.toRecord()
     }
 
     @Synchronized
@@ -250,6 +302,12 @@ class PreKeyManagerImpl(
     }
 
     @Synchronized
+    override fun hasKyberPreKey(deviceId: String, keyId: Int): Boolean {
+        val payload = getOrLoadPayload(deviceId)
+        return payload.kyberPreKeys.any { it.id == keyId }
+    }
+
+    @Synchronized
     override fun hasOneTimePreKey(deviceId: String, keyId: Int): Boolean {
         val payload = getOrLoadPayload(deviceId)
         return payload.oneTimePreKeys.any { it.id == keyId }
@@ -261,3 +319,4 @@ class PreKeyManagerImpl(
         preKeyStore.clearStore()
     }
 }
+

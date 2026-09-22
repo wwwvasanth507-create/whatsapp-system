@@ -1,6 +1,7 @@
 package com.campuschat.app.presentation.navigation
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
@@ -52,20 +53,25 @@ object AppViewModelFactory {
 
     private val authRepository by lazy { AuthRepositoryImpl(SupabaseClientProvider.client) }
     private val profileRepository by lazy { ProfileRepositoryImpl(SupabaseClientProvider.client) }
-    private val deviceRepository by lazy { DeviceRepositoryImpl(SupabaseClientProvider.client) }
+    private val deviceRepository by lazy { DeviceRepositoryImpl(SupabaseClientProvider.client, registrationIdProvider = { protocolStore?.getLocalRegistrationId() ?: 1 }) }
     private val userDiscoveryRepository by lazy { UserDiscoveryRepositoryImpl(SupabaseClientProvider.client) }
     private val transportRepository by lazy { MessageTransportRepositoryImpl(SupabaseClientProvider.client) }
 
-    private val loginUseCase by lazy { LoginUseCase(authRepository, profileRepository, deviceRepository) }
-    private val registerUseCase by lazy { RegisterUseCase(authRepository, profileRepository, deviceRepository) }
-    private val restoreSessionUseCase by lazy { RestoreSessionUseCase(authRepository, profileRepository, deviceRepository) }
+    private val loginUseCase by lazy { LoginUseCase(authRepository, profileRepository, deviceRepository, preKeySyncRepository) }
+    private val registerUseCase by lazy { RegisterUseCase(authRepository, profileRepository, deviceRepository, preKeySyncRepository) }
+    private val restoreSessionUseCase by lazy { RestoreSessionUseCase(authRepository, profileRepository, deviceRepository, preKeySyncRepository) }
     private val getProfileUseCase by lazy { GetProfileUseCase(profileRepository) }
     private val logoutUseCase by lazy { LogoutUseCase(authRepository) }
 
     val localChatRepository: LocalChatRepository? by lazy {
         applicationContext?.let { ctx ->
-            val db = CampusChatDatabase.getInstance(ctx)
-            LocalChatRepositoryImpl(db.conversationDao(), db.messageDao())
+            try {
+                val db = CampusChatDatabase.getInstance(ctx)
+                LocalChatRepositoryImpl(db.conversationDao(), db.messageDao())
+            } catch (e: Exception) {
+                Log.e("AppViewModelFactory", "Failed to initialize Room Database", e)
+                null
+            }
         }
     }
 
@@ -139,7 +145,8 @@ object AppViewModelFactory {
             authRepository = authRepository,
             encryptedMessageService = encryptedMessageService,
             transportRepository = transportRepository,
-            localChatRepository = localChatRepository
+            localChatRepository = localChatRepository,
+            x3dhSessionService = x3dhSessionService
         )
     }
 

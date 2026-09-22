@@ -31,7 +31,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatShellNavigationTest {
 
-    private val testDispatcher = StandardTestDispatcher()
+    private val testDispatcher = kotlinx.coroutines.test.StandardTestDispatcher()
 
     @Before
     fun setUp() {
@@ -45,7 +45,7 @@ class ChatShellNavigationTest {
 
     // 1. Home empty state
     @Test
-    fun test1_HomeEmptyState() = runTest {
+    fun test1_HomeEmptyState() = runTest(testDispatcher) {
         val dummyProfileRepo = object : com.campuschat.app.domain.repository.ProfileRepository {
             override suspend fun createProfile(userId: String, username: String, displayName: String) = Resource.Success(UserProfile(userId, username, displayName))
             override suspend fun getProfile(userId: String) = Resource.Success(UserProfile("u1", "user1", "User One"))
@@ -82,7 +82,7 @@ class ChatShellNavigationTest {
 
     // 4. Conversation empty state
     @Test
-    fun test4_ConversationEmptyState() = runTest {
+    fun test4_ConversationEmptyState() = runTest(testDispatcher) {
         val dummyAuth = object : AuthRepository {
             override suspend fun signUp(email: String, password: String) = Resource.Error("Not implemented")
             override suspend fun signIn(email: String, password: String) = Resource.Error("Not implemented")
@@ -123,7 +123,7 @@ class ChatShellNavigationTest {
 
     // 5. Send button disabled when message is empty
     @Test
-    fun test5_SendButtonDisabledWhenMessageIsEmpty() = runTest {
+    fun test5_SendButtonDisabledWhenMessageIsEmpty() = runTest(testDispatcher) {
         val dummyAuth = object : AuthRepository {
             override suspend fun signUp(email: String, password: String) = Resource.Error("Not implemented")
             override suspend fun signIn(email: String, password: String) = Resource.Error("Not implemented")

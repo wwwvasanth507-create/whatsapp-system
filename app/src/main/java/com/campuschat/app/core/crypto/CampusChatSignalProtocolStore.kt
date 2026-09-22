@@ -184,11 +184,19 @@ class CampusChatSignalProtocolStore(
 
     override fun loadKyberPreKey(kyberPreKeyId: Int): KyberPreKeyRecord {
         return kyberPreKeys[kyberPreKeyId]
+            ?: preKeyManager.getKyberPreKey(localDeviceId, kyberPreKeyId)
+            ?: preKeyManager.getCurrentKyberPreKey(localDeviceId)
             ?: throw org.signal.libsignal.protocol.InvalidKeyIdException("KyberPreKey $kyberPreKeyId not found")
     }
 
     override fun loadKyberPreKeys(): List<KyberPreKeyRecord> {
-        return kyberPreKeys.values.toList()
+        val mapKeys = kyberPreKeys.values.toList()
+        val localCurrent = preKeyManager.getCurrentKyberPreKey(localDeviceId)
+        return if (localCurrent != null && mapKeys.none { it.id == localCurrent.id }) {
+            mapKeys + localCurrent
+        } else {
+            mapKeys
+        }
     }
 
     override fun storeKyberPreKey(kyberPreKeyId: Int, record: KyberPreKeyRecord) {
@@ -196,7 +204,7 @@ class CampusChatSignalProtocolStore(
     }
 
     override fun containsKyberPreKey(kyberPreKeyId: Int): Boolean {
-        return kyberPreKeys.containsKey(kyberPreKeyId)
+        return kyberPreKeys.containsKey(kyberPreKeyId) || preKeyManager.hasKyberPreKey(localDeviceId, kyberPreKeyId)
     }
 
     override fun markKyberPreKeyUsed(kyberPreKeyId: Int, signedPreKeyId: Int, baseKey: ECPublicKey) {

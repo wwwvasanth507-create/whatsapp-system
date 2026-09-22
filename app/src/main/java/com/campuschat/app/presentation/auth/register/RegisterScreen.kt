@@ -91,7 +91,7 @@ fun RegisterScreen(
             )
 
             Text(
-                text = "Join CampusChat private messaging network",
+                text = "Join KUTTYCHAT private messaging network",
                 fontSize = 14.sp,
                 color = TextSecondary,
                 modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)

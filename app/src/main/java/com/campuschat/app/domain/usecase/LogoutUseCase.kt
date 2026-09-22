@@ -11,6 +11,11 @@ class LogoutUseCase(
         val result = authRepository.signOut()
         if (result is Resource.Success) {
             SessionManager.setUnauthenticated()
+            try {
+                com.campuschat.app.presentation.navigation.AppViewModelFactory.realtimeMessageObserver?.stopObserving()
+            } catch (e: Exception) {
+                // Non-fatal stop exception
+            }
         }
         return result
     }

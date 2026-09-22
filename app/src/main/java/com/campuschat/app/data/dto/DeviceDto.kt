@@ -14,7 +14,8 @@ data class DeviceInsertDto(
     @SerialName("id") val id: String,
     @SerialName("user_id") val userId: String,
     @SerialName("device_name") val deviceName: String,
-    @SerialName("platform") val platform: String
+    @SerialName("platform") val platform: String,
+    @SerialName("registration_id") val registrationId: Int
 )
 
 /**
@@ -26,6 +27,7 @@ data class DeviceDto(
     @SerialName("user_id") val userId: String,
     @SerialName("device_name") val deviceName: String,
     @SerialName("platform") val platform: String,
+    @SerialName("registration_id") val registrationId: Int? = null,
     @SerialName("fcm_token") val fcmToken: String? = null,
     @SerialName("last_seen_at") val lastSeenAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,

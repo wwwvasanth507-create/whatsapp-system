@@ -52,13 +52,13 @@ fun SplashScreen(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = Icons.Default.Lock,
-                contentDescription = "CampusChat Lock",
+                contentDescription = "KUTTYCHAT Lock",
                 tint = PrimaryEmerald,
                 modifier = Modifier.size(72.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "CampusChat",
+                text = "KUTTYCHAT",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

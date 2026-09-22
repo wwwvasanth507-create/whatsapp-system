@@ -554,6 +554,7 @@ class MessageTransportTest {
             recipientRegistrationId = bobRegistrationId1,
             plaintext = "Message 1"
         )
+        kotlinx.coroutines.delay(10)
         aliceOutbox.sendEncryptedTextMessage(
             senderDeviceId = aliceDeviceId,
             recipientUserId = bobUserId,

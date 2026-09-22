@@ -8,7 +8,9 @@ internal data class PreKeyStorePayload(
     val deviceId: String,
     val lastSignedPreKeyId: Int,
     val lastOneTimePreKeyId: Int,
+    val lastKyberPreKeyId: Int = 1,
     val signedPreKeys: List<StoredSignedPreKey>,
+    val kyberPreKeys: List<StoredKyberPreKey> = emptyList(),
     val oneTimePreKeys: List<StoredOneTimePreKey>
 )
 
@@ -41,9 +43,13 @@ internal class PreKeyStore(
         val deviceIdBytes = payload.deviceId.toByteArray(Charsets.UTF_8)
 
         // Calculate size for buffer allocation
-        var totalBytesNeeded = 4 + 4 + 4 + deviceIdBytes.size + 4 + 4 + 4
+        var totalBytesNeeded = 4 + 4 + 4 + deviceIdBytes.size + 4 + 4 + 4 + 4
         payload.signedPreKeys.forEach { spk ->
             totalBytesNeeded += 4 + 8 + 1 + 4 + spk.recordBytes.size
+        }
+        totalBytesNeeded += 4
+        payload.kyberPreKeys.forEach { kpk ->
+            totalBytesNeeded += 4 + 8 + 1 + 4 + kpk.recordBytes.size
         }
         totalBytesNeeded += 4
         payload.oneTimePreKeys.forEach { opk ->
@@ -57,6 +63,7 @@ internal class PreKeyStore(
         buffer.put(deviceIdBytes)
         buffer.putInt(payload.lastSignedPreKeyId)
         buffer.putInt(payload.lastOneTimePreKeyId)
+        buffer.putInt(payload.lastKyberPreKeyId)
 
         // Write SignedPreKeys
         buffer.putInt(payload.signedPreKeys.size)
@@ -66,6 +73,16 @@ internal class PreKeyStore(
             buffer.put(if (spk.isCurrent) 1.toByte() else 0.toByte())
             buffer.putInt(spk.recordBytes.size)
             buffer.put(spk.recordBytes)
+        }
+
+        // Write KyberPreKeys
+        buffer.putInt(payload.kyberPreKeys.size)
+        payload.kyberPreKeys.forEach { kpk ->
+            buffer.putInt(kpk.id)
+            buffer.putLong(kpk.timestamp)
+            buffer.put(if (kpk.isCurrent) 1.toByte() else 0.toByte())
+            buffer.putInt(kpk.recordBytes.size)
+            buffer.put(kpk.recordBytes)
         }
 
         // Write OneTimePreKeys
@@ -145,6 +162,7 @@ internal class PreKeyStore(
 
             val lastSignedPreKeyId = buffer.int
             val lastOneTimePreKeyId = buffer.int
+            val lastKyberPreKeyId = if (buffer.hasRemaining()) buffer.int else 1
 
             val spkCount = buffer.int
             val signedPreKeys = ArrayList<StoredSignedPreKey>(spkCount)
@@ -156,6 +174,18 @@ internal class PreKeyStore(
                 val recordBytes = ByteArray(recordLen)
                 buffer.get(recordBytes)
                 signedPreKeys.add(StoredSignedPreKey(id, timestamp, isCurrent, recordBytes))
+            }
+
+            val kyberCount = if (buffer.hasRemaining()) buffer.int else 0
+            val kyberPreKeys = ArrayList<StoredKyberPreKey>(kyberCount)
+            for (i in 0 until kyberCount) {
+                val id = buffer.int
+                val timestamp = buffer.long
+                val isCurrent = buffer.get() == 1.toByte()
+                val recordLen = buffer.int
+                val recordBytes = ByteArray(recordLen)
+                buffer.get(recordBytes)
+                kyberPreKeys.add(StoredKyberPreKey(id, timestamp, isCurrent, recordBytes))
             }
 
             val opkCount = buffer.int
@@ -175,7 +205,9 @@ internal class PreKeyStore(
                 deviceId = boundDevice,
                 lastSignedPreKeyId = lastSignedPreKeyId,
                 lastOneTimePreKeyId = lastOneTimePreKeyId,
+                lastKyberPreKeyId = lastKyberPreKeyId,
                 signedPreKeys = signedPreKeys,
+                kyberPreKeys = kyberPreKeys,
                 oneTimePreKeys = oneTimePreKeys
             )
         } catch (e: Exception) {

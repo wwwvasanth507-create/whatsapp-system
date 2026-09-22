@@ -178,7 +178,15 @@ fun ConversationScreen(
                         }
                     }
                 } else {
+                    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                    androidx.compose.runtime.LaunchedEffect(uiState.messages.size) {
+                        if (uiState.messages.isNotEmpty()) {
+                            listState.animateScrollToItem(uiState.messages.size - 1)
+                        }
+                    }
+
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -189,7 +197,7 @@ fun ConversationScreen(
                 }
             }
 
-            // Bottom Input Bar
+            // Bottom Input Bar with IME Padding
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -280,10 +288,22 @@ private fun MessageBubble(msg: MessageUiItem) {
                         fontSize = 10.sp
                     )
                     Spacer(modifier = Modifier.width(4.dp))
+                    // Delivery State Indicator (Phase 10)
+                    val deliveryIcon = when (msg.deliveryState) {
+                        "PENDING", "ENCRYPTING", "UPLOADING" -> Icons.Default.Lock
+                        "SENT", "DELIVERED" -> Icons.Default.Lock
+                        "FAILED" -> Icons.Default.Lock
+                        else -> Icons.Default.Lock
+                    }
+                    val deliveryColor = when (msg.deliveryState) {
+                        "FAILED" -> androidx.compose.ui.graphics.Color.Red
+                        "DELIVERED", "SENT" -> PrimaryEmerald
+                        else -> TextMuted
+                    }
                     Icon(
-                        imageVector = Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = PrimaryEmerald,
+                        imageVector = deliveryIcon,
+                        contentDescription = msg.deliveryState,
+                        tint = deliveryColor,
                         modifier = Modifier.size(10.dp)
                     )
                 }

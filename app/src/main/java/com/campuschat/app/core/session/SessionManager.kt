@@ -56,6 +56,10 @@ object SessionManager {
     }
 
     fun getCurrentUserId(): String? {
+        val currentState = _authState.value
+        if (currentState is AuthState.Authenticated) {
+            return currentState.user.id
+        }
         if (!::supabaseClient.isInitialized) {
             return null
         }

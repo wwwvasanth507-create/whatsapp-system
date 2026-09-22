@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CampusChat"
+rootProject.name = "KUTTYCHAT"
 include(":app")

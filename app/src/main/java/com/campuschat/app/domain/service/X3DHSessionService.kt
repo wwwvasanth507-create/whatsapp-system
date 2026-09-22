@@ -125,21 +125,33 @@ class X3DHSessionServiceImpl(
                 return X3DHSessionResult.IdentityChanged(bundle.userId, bundle.deviceId)
             }
 
-            // 8. Decode Kyber PreKey if available, or generate fallback for PreKeyBundle constructor
-            val (kyberId, kyberKey, kyberSig) = if (!bundle.kyberPreKeyBase64.isNullOrBlank() && !bundle.kyberPreKeySignatureBase64.isNullOrBlank()) {
-                val kKeyBytes = decodeBase64(bundle.kyberPreKeyBase64)
-                val kSigBytes = decodeBase64(bundle.kyberPreKeySignatureBase64)
-                val kKey = org.signal.libsignal.protocol.kem.KEMPublicKey(kKeyBytes)
-                Triple(bundle.kyberPreKeyId ?: 1, kKey, kSigBytes)
-            } else {
-                val kemKeyPair = org.signal.libsignal.protocol.kem.KEMKeyPair.generate(org.signal.libsignal.protocol.kem.KEMKeyType.values()[0])
-                Triple(0, kemKeyPair.publicKey, ByteArray(64))
-            }
-
             val (opkId, opkKey) = if (oneTimePreKey != null && bundle.oneTimePreKeyId != null) {
                 Pair(bundle.oneTimePreKeyId, oneTimePreKey)
             } else {
                 Pair(-1, null)
+            }
+
+            // 8. Process Kyber PQ PreKey if present. Do NOT invent dummy KEM keys or dummy 64-byte signatures.
+            if (bundle.kyberPreKeyBase64.isNullOrBlank() || bundle.kyberPreKeySignatureBase64.isNullOrBlank()) {
+                return X3DHSessionResult.InvalidPreKeyBundle("Recipient bundle missing valid Kyber post-quantum prekey material")
+            }
+
+            val kKeyBytes = decodeBase64(bundle.kyberPreKeyBase64)
+            val kSigBytes = decodeBase64(bundle.kyberPreKeySignatureBase64)
+            val kKey = try {
+                org.signal.libsignal.protocol.kem.KEMPublicKey(kKeyBytes)
+            } catch (e: Exception) {
+                return X3DHSessionResult.InvalidPreKeyBundle("Invalid Kyber public key encoding")
+            }
+
+            val kyberSigValid = try {
+                identityEcKey.verifySignature(kKey.serialize(), kSigBytes)
+            } catch (e: Exception) {
+                false
+            }
+
+            if (!kyberSigValid) {
+                return X3DHSessionResult.InvalidPreKeyBundle("Kyber prekey signature verification failed")
             }
 
             val preKeyBundle = PreKeyBundle(
@@ -151,9 +163,9 @@ class X3DHSessionServiceImpl(
                 signedPreKey,
                 signatureBytes,
                 identityKey,
-                kyberId,
-                kyberKey,
-                kyberSig
+                bundle.kyberPreKeyId ?: 1,
+                kKey,
+                kSigBytes
             )
 
             // 9. Process X3DH Session Establishment via official libsignal SessionBuilder

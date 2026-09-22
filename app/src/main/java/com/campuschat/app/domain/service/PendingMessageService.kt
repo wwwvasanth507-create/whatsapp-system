@@ -59,10 +59,12 @@ class PendingMessageServiceImpl(
                     )
                     decryptedMessages.add(received)
 
-                    val conversationId = "${pendingItem.envelope.senderUserId}_${pendingItem.envelope.senderDeviceId}"
+                    val localAccountId = currentUser.id
+                    val conversationId = "${localAccountId}_${pendingItem.envelope.senderUserId}_${pendingItem.envelope.senderDeviceId}"
                     localChatRepository?.saveMessage(
                         MessageEntity(
                             id = pendingItem.messageId,
+                            localAccountId = localAccountId,
                             conversationId = conversationId,
                             senderUserId = pendingItem.envelope.senderUserId,
                             senderDeviceId = pendingItem.envelope.senderDeviceId,

@@ -1,0 +1,687 @@
+README.md:22:| [`profiles`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L9-L16) | User identity profile linked to Supabase Auth | `id UUID` REFERENCES `auth.users(id)` |
+README.md:23:| [`devices`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L22-L31) | Tracks registered devices per user for multi-device support | `id UUID` (FK: `user_id` -> `profiles.id`) |
+README.md:24:| [`conversations`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L36-L41) | Chat contexts (currently 1-to-1 direct messaging, designed for group expansion) | `id UUID` |
+README.md:25:| [`conversation_members`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L46-L51) | Junction table establishing conversation membership | `(conversation_id, user_id)` Composite PK |
+README.md:26:| [`messages`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L57-L67) | E2EE message payloads (ciphertext ONLY; NO plaintext columns) | `id UUID` (FK: `conversation_id`, `sender_id`) |
+README.md:27:| [`message_deliveries`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L73-L84) | Delivery and read receipts tracked per recipient device | `id UUID` (FK: `message_id`, `recipient_id`, `recipient_device_id`) |
+README.md:28:| [`encrypted_files`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L89-L98) | Metadata for temporary client-encrypted storage files | `id UUID` (FK: `message_id`) |
+README.md:29:| [`push_tokens`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L103-L113) | FCM push tokens mapped to user devices | `id UUID` (FK: `user_id`, `device_id`) |
+README.md:30:| [`encryption_keys_metadata`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000000_create_campuschat_schema.sql#L118-L128) | Public keys and key version metadata (NEVER stores private keys) | `id UUID` (FK: `user_id`, `device_id`) |
+README.md:109:3. Open [`supabase/migrations/20260920000005_campuschat_all_in_one.sql`](file:///c:/ll/whatsapp-system/supabase/migrations/20260920000005_campuschat_all_in_one.sql).
+app\build.gradle.kts:10:namespace = "com.campuschat.app"
+app\build.gradle.kts:15:applicationId = "com.campuschat.app"
+app\src\main\AndroidManifest.xml:9:android:name=".CampusChatApp"
+app\src\main\AndroidManifest.xml:17:android:theme="@style/Theme.CampusChat">
+app\src\main\AndroidManifest.xml:21:android:theme="@style/Theme.CampusChat"
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:1:package com.campuschat.app
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:5:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:6:import com.campuschat.app.core.network.SupabaseClientProvider
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:7:import com.campuschat.app.core.session.SessionManager
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:8:import com.campuschat.app.presentation.navigation.AppViewModelFactory
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:10:class CampusChatApp : Application() {
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:32:Log.e("CampusChatApp", "Failed to start RealtimeMessageObserver on app startup", e)
+app\src\main\java\com\campuschat\app\CampusChatApp.kt:35:Log.e("CampusChatApp", "Error during CampusChatApp initialization", e)
+app\src\main\java\com\campuschat\app\MainActivity.kt:1:package com.campuschat.app
+app\src\main\java\com\campuschat\app\MainActivity.kt:10:import com.campuschat.app.presentation.navigation.NavGraph
+app\src\main\java\com\campuschat\app\MainActivity.kt:11:import com.campuschat.app.presentation.theme.CampusChatTheme
+app\src\main\java\com\campuschat\app\MainActivity.kt:12:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\MainActivity.kt:20:CampusChatTheme {
+app\src\main\java\com\campuschat\app\core\config\AppConfig.kt:1:package com.campuschat.app.core.config
+app\src\main\java\com\campuschat\app\core\config\AppConfig.kt:3:import com.campuschat.app.BuildConfig
+app\src\main\java\com\campuschat\app\core\crypto\ApiProbe.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\CampusChatSignalProtocolStore.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\CampusChatSignalProtocolStore.kt:21:class CampusChatSignalProtocolStore(
+app\src\main\java\com\campuschat\app\core\crypto\CampusChatSignalProtocolStore.kt:24:private val sessionStore: CampusChatSessionStore,
+app\src\main\java\com\campuschat\app\core\crypto\CryptoException.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\CryptoException.kt:4:* Sealed exception hierarchy for CampusChat cryptographic operations.
+app\src\main\java\com\campuschat\app\core\crypto\CryptoKeyManager.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\CryptoKeyManager.kt:51:private const val MASTER_KEY_ALIAS = "CampusChatMasterWrappingKey"
+app\src\main\java\com\campuschat\app\core\crypto\IdentityKeyManager.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\IdentityKeyManager.kt:30:private const val IDENTITY_FILE_NAME = "campuschat_identity_store.bin"
+app\src\main\java\com\campuschat\app\core\crypto\IdentityKeyManager.kt:31:private const val MAGIC_HEADER = 0x43434944 // "CCID" (CampusChat Identity)
+app\src\main\java\com\campuschat\app\core\crypto\KeystoreSecurityDetector.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\PreKeyManager.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\PreKeyModels.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\PreKeyStore.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\PreKeyStore.kt:26:private const val PREKEY_STORE_FILE_NAME = "campuschat_prekey_store.bin"
+app\src\main\java\com\campuschat\app\core\crypto\SecureRandomProvider.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\SessionStore.kt:1:package com.campuschat.app.core.crypto
+app\src\main\java\com\campuschat\app\core\crypto\SessionStore.kt:13:* Extended SessionStore interface adding CampusChat-specific device binding methods.
+app\src\main\java\com\campuschat\app\core\crypto\SessionStore.kt:15:interface CampusChatSessionStore : SessionStore {
+app\src\main\java\com\campuschat\app\core\crypto\SessionStore.kt:29:) : CampusChatSessionStore {
+app\src\main\java\com\campuschat\app\core\crypto\SessionStore.kt:40:private const val SESSION_STORE_FILE_NAME = "campuschat_session_store.bin"
+app\src\main\java\com\campuschat\app\core\crypto\SessionStore.kt:41:private const val MAGIC_HEADER = 0x43435345 // "CCSE" (CampusChat Session Store)
+app\src\main\java\com\campuschat\app\core\device\DeviceIdProvider.kt:1:package com.campuschat.app.core.device
+app\src\main\java\com\campuschat\app\core\device\DeviceIdProvider.kt:6:import com.campuschat.app.core.config.AppConfig
+app\src\main\java\com\campuschat\app\core\device\DeviceIdProvider.kt:11:private const val PREFS_NAME = "campuschat_device_prefs"
+app\src\main\java\com\campuschat\app\core\network\SupabaseClientProvider.kt:1:package com.campuschat.app.core.network
+app\src\main\java\com\campuschat\app\core\network\SupabaseClientProvider.kt:3:import com.campuschat.app.core.config.AppConfig
+app\src\main\java\com\campuschat\app\core\result\Resource.kt:1:package com.campuschat.app.core.result
+app\src\main\java\com\campuschat\app\core\session\SessionManager.kt:1:package com.campuschat.app.core.session
+app\src\main\java\com\campuschat\app\data\dto\DeviceDto.kt:1:package com.campuschat.app.data.dto
+app\src\main\java\com\campuschat\app\data\dto\EncryptedMessageDto.kt:1:package com.campuschat.app.data.dto
+app\src\main\java\com\campuschat\app\data\dto\ProfileDto.kt:1:package com.campuschat.app.data.dto
+app\src\main\java\com\campuschat\app\data\dto\SignalPreKeyDtos.kt:1:package com.campuschat.app.data.dto
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:1:package com.campuschat.app.data.local
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:7:import com.campuschat.app.data.local.dao.ConversationDao
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:8:import com.campuschat.app.data.local.dao.MessageDao
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:9:import com.campuschat.app.data.local.entity.ConversationEntity
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:10:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:17:abstract class CampusChatDatabase : RoomDatabase() {
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:24:private var INSTANCE: CampusChatDatabase? = null
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:26:fun getInstance(context: Context): CampusChatDatabase {
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:30:CampusChatDatabase::class.java,
+app\src\main\java\com\campuschat\app\data\local\CampusChatDatabase.kt:31:"campuschat_local_db.db"
+app\src\main\java\com\campuschat\app\data\local\dao\ConversationDao.kt:1:package com.campuschat.app.data.local.dao
+app\src\main\java\com\campuschat\app\data\local\dao\ConversationDao.kt:7:import com.campuschat.app.data.local.entity.ConversationEntity
+app\src\main\java\com\campuschat\app\data\local\dao\MessageDao.kt:1:package com.campuschat.app.data.local.dao
+app\src\main\java\com\campuschat\app\data\local\dao\MessageDao.kt:7:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\main\java\com\campuschat\app\data\local\entity\ConversationEntity.kt:1:package com.campuschat.app.data.local.entity
+app\src\main\java\com\campuschat\app\data\local\entity\MessageEntity.kt:1:package com.campuschat.app.data.local.entity
+app\src\main\java\com\campuschat\app\data\realtime\RealtimeMessageObserver.kt:1:package com.campuschat.app.data.realtime
+app\src\main\java\com\campuschat\app\data\realtime\RealtimeMessageObserver.kt:3:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\data\realtime\RealtimeMessageObserver.kt:4:import com.campuschat.app.domain.service.PendingMessageService
+app\src\main\java\com\campuschat\app\data\realtime\RealtimeMessageObserver.kt:32:val userId = com.campuschat.app.core.session.SessionManager.getCurrentUserId()
+app\src\main\java\com\campuschat\app\data\repository\AuthRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\AuthRepositoryImpl.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\data\repository\AuthRepositoryImpl.kt:4:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\data\repository\DeviceRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\DeviceRepositoryImpl.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\data\repository\DeviceRepositoryImpl.kt:4:import com.campuschat.app.data.dto.DeviceInsertDto
+app\src\main\java\com\campuschat\app\data\repository\DeviceRepositoryImpl.kt:5:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\data\repository\DeviceRepositoryImpl.kt:6:import com.campuschat.app.domain.repository.DeviceRepository
+app\src\main\java\com\campuschat\app\data\repository\EncryptedMessageRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\EncryptedMessageRepositoryImpl.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\data\repository\EncryptedMessageRepositoryImpl.kt:4:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\main\java\com\campuschat\app\data\repository\EncryptedMessageRepositoryImpl.kt:5:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\main\java\com\campuschat\app\data\repository\EncryptedMessageRepositoryImpl.kt:6:import com.campuschat.app.domain.repository.EncryptedMessageRepository
+app\src\main\java\com\campuschat\app\data\repository\EncryptedMessageRepositoryImpl.kt:7:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\main\java\com\campuschat\app\data\repository\LocalChatRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\LocalChatRepositoryImpl.kt:3:import com.campuschat.app.data.local.dao.ConversationDao
+app\src\main\java\com\campuschat\app\data\repository\LocalChatRepositoryImpl.kt:4:import com.campuschat.app.data.local.dao.MessageDao
+app\src\main\java\com\campuschat\app\data\repository\LocalChatRepositoryImpl.kt:5:import com.campuschat.app.data.local.entity.ConversationEntity
+app\src\main\java\com\campuschat\app\data\repository\LocalChatRepositoryImpl.kt:6:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\main\java\com\campuschat\app\data\repository\LocalChatRepositoryImpl.kt:7:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:4:import com.campuschat.app.data.dto.AcknowledgeMessageParams
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:5:import com.campuschat.app.data.dto.EncryptedMessageDto
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:6:import com.campuschat.app.data.dto.EnqueueMessageParams
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:7:import com.campuschat.app.data.dto.FetchPendingParams
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:8:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:9:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\main\java\com\campuschat\app\data\repository\MessageTransportRepositoryImpl.kt:10:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:3:import com.campuschat.app.core.crypto.IdentityKeyManager
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:4:import com.campuschat.app.core.crypto.PreKeyManager
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:6:import com.campuschat.app.data.dto.ClaimedPreKeyBundleDto
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:7:import com.campuschat.app.data.dto.DeviceIdentityKeyDto
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:8:import com.campuschat.app.data.dto.DeviceKyberPreKeyDto
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:9:import com.campuschat.app.data.dto.DeviceOneTimePreKeyDto
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:10:import com.campuschat.app.data.dto.DeviceSignedPreKeyDto
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:11:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\main\java\com\campuschat\app\data\repository\PreKeySyncRepositoryImpl.kt:12:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\main\java\com\campuschat\app\data\repository\ProfileRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\ProfileRepositoryImpl.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\data\repository\ProfileRepositoryImpl.kt:4:import com.campuschat.app.data.dto.ProfileDto
+app\src\main\java\com\campuschat\app\data\repository\ProfileRepositoryImpl.kt:5:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\data\repository\ProfileRepositoryImpl.kt:6:import com.campuschat.app.domain.repository.ProfileRepository
+app\src\main\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryImpl.kt:1:package com.campuschat.app.data.repository
+app\src\main\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryImpl.kt:4:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryImpl.kt:5:import com.campuschat.app.data.dto.DeviceDto
+app\src\main\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryImpl.kt:6:import com.campuschat.app.data.dto.ProfileDto
+app\src\main\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryImpl.kt:7:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryImpl.kt:8:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryImpl.kt:9:import com.campuschat.app.domain.repository.UserDiscoveryRepository
+app\src\main\java\com\campuschat\app\domain\model\ConversationListItem.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\model\EncryptedMessageEnvelope.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\model\EncryptedMessageResult.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\model\PendingTransportMessage.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\model\RemotePreKeyBundle.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\model\UserDevice.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\model\UserProfile.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\model\X3DHSessionResult.kt:1:package com.campuschat.app.domain.model
+app\src\main\java\com\campuschat\app\domain\repository\AuthRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\AuthRepository.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\repository\DeviceRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\DeviceRepository.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\repository\DeviceRepository.kt:4:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\domain\repository\EncryptedMessageRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\EncryptedMessageRepository.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\repository\EncryptedMessageRepository.kt:4:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\main\java\com\campuschat\app\domain\repository\EncryptedMessageRepository.kt:5:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\main\java\com\campuschat\app\domain\repository\LocalChatRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\LocalChatRepository.kt:3:import com.campuschat.app.data.local.entity.ConversationEntity
+app\src\main\java\com\campuschat\app\domain\repository\LocalChatRepository.kt:4:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\main\java\com\campuschat\app\domain\repository\MessageTransportRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\MessageTransportRepository.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\repository\MessageTransportRepository.kt:4:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\main\java\com\campuschat\app\domain\repository\MessageTransportRepository.kt:5:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\main\java\com\campuschat\app\domain\repository\PreKeySyncRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\PreKeySyncRepository.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\repository\PreKeySyncRepository.kt:4:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\main\java\com\campuschat\app\domain\repository\ProfileRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\ProfileRepository.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\repository\ProfileRepository.kt:4:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\domain\repository\UserDiscoveryRepository.kt:1:package com.campuschat.app.domain.repository
+app\src\main\java\com\campuschat\app\domain\repository\UserDiscoveryRepository.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\repository\UserDiscoveryRepository.kt:4:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\domain\repository\UserDiscoveryRepository.kt:5:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:1:package com.campuschat.app.domain.service
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:3:import com.campuschat.app.core.crypto.CampusChatSessionStore
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:4:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:5:import com.campuschat.app.domain.model.DecryptionResult
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:6:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:7:import com.campuschat.app.domain.model.EncryptionResult
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:8:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:37:private val protocolStore: CampusChatSignalProtocolStore,
+app\src\main\java\com\campuschat\app\domain\service\EncryptedMessageService.kt:38:private val sessionStore: CampusChatSessionStore
+app\src\main\java\com\campuschat\app\domain\service\MessageOutboxService.kt:1:package com.campuschat.app.domain.service
+app\src\main\java\com\campuschat\app\domain\service\MessageOutboxService.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\service\MessageOutboxService.kt:4:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\main\java\com\campuschat\app\domain\service\MessageOutboxService.kt:5:import com.campuschat.app.domain.model.EncryptionResult
+app\src\main\java\com\campuschat\app\domain\service\MessageOutboxService.kt:6:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\service\MessageOutboxService.kt:7:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\main\java\com\campuschat\app\domain\service\MessageOutboxService.kt:8:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\main\java\com\campuschat\app\domain\service\PendingMessageService.kt:1:package com.campuschat.app.domain.service
+app\src\main\java\com\campuschat\app\domain\service\PendingMessageService.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\service\PendingMessageService.kt:4:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\main\java\com\campuschat\app\domain\service\PendingMessageService.kt:5:import com.campuschat.app.domain.model.DecryptionResult
+app\src\main\java\com\campuschat\app\domain\service\PendingMessageService.kt:6:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\service\PendingMessageService.kt:7:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\main\java\com\campuschat\app\domain\service\PendingMessageService.kt:8:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:1:package com.campuschat.app.domain.service
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:3:import com.campuschat.app.core.crypto.CampusChatSessionStore
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:4:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:6:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:7:import com.campuschat.app.domain.model.X3DHSessionResult
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:8:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:9:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:25:private val protocolStore: CampusChatSignalProtocolStore,
+app\src\main\java\com\campuschat\app\domain\service\X3DHSessionService.kt:26:private val sessionStore: CampusChatSessionStore
+app\src\main\java\com\campuschat\app\domain\usecase\GetProfileUseCase.kt:1:package com.campuschat.app.domain.usecase
+app\src\main\java\com\campuschat\app\domain\usecase\GetProfileUseCase.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\usecase\GetProfileUseCase.kt:4:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\domain\usecase\GetProfileUseCase.kt:5:import com.campuschat.app.domain.repository.ProfileRepository
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:1:package com.campuschat.app.domain.usecase
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:4:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:6:import com.campuschat.app.core.session.SessionManager
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:7:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:8:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:9:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:10:import com.campuschat.app.domain.repository.DeviceRepository
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:11:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\main\java\com\campuschat\app\domain\usecase\LoginUseCase.kt:12:import com.campuschat.app.domain.repository.ProfileRepository
+app\src\main\java\com\campuschat\app\domain\usecase\LogoutUseCase.kt:1:package com.campuschat.app.domain.usecase
+app\src\main\java\com\campuschat\app\domain\usecase\LogoutUseCase.kt:3:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\usecase\LogoutUseCase.kt:4:import com.campuschat.app.core.session.SessionManager
+app\src\main\java\com\campuschat\app\domain\usecase\LogoutUseCase.kt:5:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:1:package com.campuschat.app.domain.usecase
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:4:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:6:import com.campuschat.app.core.session.SessionManager
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:7:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:8:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:9:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:10:import com.campuschat.app.domain.repository.DeviceRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:11:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RegisterUseCase.kt:12:import com.campuschat.app.domain.repository.ProfileRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:1:package com.campuschat.app.domain.usecase
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:4:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:6:import com.campuschat.app.core.session.AuthState
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:7:import com.campuschat.app.core.session.SessionManager
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:8:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:9:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:10:import com.campuschat.app.domain.repository.AuthRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:11:import com.campuschat.app.domain.repository.DeviceRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:12:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\main\java\com\campuschat\app\domain\usecase\RestoreSessionUseCase.kt:13:import com.campuschat.app.domain.repository.ProfileRepository
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:1:package com.campuschat.app.presentation.auth.login
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:44:import com.campuschat.app.presentation.common.CampusChatErrorBanner
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:45:import com.campuschat.app.presentation.common.CampusChatPrimaryButton
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:46:import com.campuschat.app.presentation.common.CampusChatTextField
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:47:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:48:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:49:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:50:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:99:CampusChatErrorBanner(
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:105:CampusChatTextField(
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:122:CampusChatTextField(
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginScreen.kt:152:CampusChatPrimaryButton(
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginViewModel.kt:1:package com.campuschat.app.presentation.auth.login
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginViewModel.kt:8:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\auth\login\LoginViewModel.kt:9:import com.campuschat.app.domain.usecase.LoginUseCase
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:1:package com.campuschat.app.presentation.auth.register
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:46:import com.campuschat.app.presentation.common.CampusChatErrorBanner
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:47:import com.campuschat.app.presentation.common.CampusChatPrimaryButton
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:48:import com.campuschat.app.presentation.common.CampusChatTextField
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:49:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:50:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:51:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:52:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:101:CampusChatErrorBanner(
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:107:CampusChatTextField(
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:124:CampusChatTextField(
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:141:CampusChatTextField(
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:158:CampusChatTextField(
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterScreen.kt:188:CampusChatPrimaryButton(
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterViewModel.kt:1:package com.campuschat.app.presentation.auth.register
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterViewModel.kt:8:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\auth\register\RegisterViewModel.kt:9:import com.campuschat.app.domain.usecase.RegisterUseCase
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:1:package com.campuschat.app.presentation.chat.conversation
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:43:import com.campuschat.app.presentation.common.CampusChatCard
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:44:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:45:import com.campuschat.app.presentation.theme.DarkCard
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:46:import com.campuschat.app.presentation.theme.DarkInput
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:47:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:48:import com.campuschat.app.presentation.theme.TextMuted
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:49:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:50:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationScreen.kt:151:CampusChatCard(modifier = Modifier.fillMaxWidth()) {
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:1:package com.campuschat.app.presentation.chat.conversation
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:5:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:6:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:7:import com.campuschat.app.domain.model.X3DHSessionResult
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:8:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:9:import com.campuschat.app.domain.service.MessageOutboxService
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:10:import com.campuschat.app.domain.service.PendingMessageService
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:11:import com.campuschat.app.domain.service.ProcessPendingResult
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:12:import com.campuschat.app.domain.service.X3DHSessionService
+app\src\main\java\com\campuschat\app\presentation\chat\conversation\ConversationViewModel.kt:68:val currentUserId = com.campuschat.app.core.session.SessionManager.getCurrentUserId() ?: ""
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:1:package com.campuschat.app.presentation.chat.newchat
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:45:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:46:import com.campuschat.app.presentation.common.CampusChatCard
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:47:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:48:import com.campuschat.app.presentation.theme.DarkCard
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:49:import com.campuschat.app.presentation.theme.DarkInput
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:50:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:51:import com.campuschat.app.presentation.theme.TextMuted
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:52:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:53:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:146:CampusChatCard(modifier = Modifier.fillMaxWidth()) {
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatScreen.kt:211:CampusChatCard(modifier = Modifier.fillMaxWidth()) {
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatViewModel.kt:1:package com.campuschat.app.presentation.chat.newchat
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatViewModel.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatViewModel.kt:6:import com.campuschat.app.domain.model.UserDevice
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatViewModel.kt:7:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\presentation\chat\newchat\NewChatViewModel.kt:8:import com.campuschat.app.domain.repository.UserDiscoveryRepository
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:1:package com.campuschat.app.presentation.common
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:38:import com.campuschat.app.presentation.theme.CardBorder
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:39:import com.campuschat.app.presentation.theme.DarkSurface
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:40:import com.campuschat.app.presentation.theme.ErrorContainer
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:41:import com.campuschat.app.presentation.theme.ErrorRed
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:42:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:43:import com.campuschat.app.presentation.theme.TextMuted
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:44:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:45:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:48:fun CampusChatTextField(
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:105:fun CampusChatPrimaryButton(
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:143:fun CampusChatErrorBanner(
+app\src\main\java\com\campuschat\app\presentation\common\Components.kt:170:fun CampusChatCard(
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:1:package com.campuschat.app.presentation.home
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:43:import com.campuschat.app.domain.model.ConversationListItem
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:44:import com.campuschat.app.presentation.common.CampusChatCard
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:45:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:46:import com.campuschat.app.presentation.theme.DarkCard
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:47:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:48:import com.campuschat.app.presentation.theme.TextMuted
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:49:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:50:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:171:CampusChatCard(
+app\src\main\java\com\campuschat\app\presentation\home\HomeScreen.kt:256:CampusChatCard(
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:1:package com.campuschat.app.presentation.home
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:5:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:6:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:7:import com.campuschat.app.core.session.SessionManager
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:8:import com.campuschat.app.domain.model.ConversationListItem
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:9:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:10:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\main\java\com\campuschat\app\presentation\home\HomeViewModel.kt:11:import com.campuschat.app.domain.usecase.GetProfileUseCase
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:1:package com.campuschat.app.presentation.navigation
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:11:import com.campuschat.app.presentation.auth.login.LoginScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:12:import com.campuschat.app.presentation.auth.login.LoginViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:13:import com.campuschat.app.presentation.auth.register.RegisterScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:14:import com.campuschat.app.presentation.auth.register.RegisterViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:15:import com.campuschat.app.presentation.chat.conversation.ConversationScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:16:import com.campuschat.app.presentation.chat.conversation.ConversationViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:17:import com.campuschat.app.presentation.chat.newchat.NewChatScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:18:import com.campuschat.app.presentation.chat.newchat.NewChatViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:19:import com.campuschat.app.presentation.home.HomeScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:20:import com.campuschat.app.presentation.home.HomeViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:21:import com.campuschat.app.presentation.profile.ProfileScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:22:import com.campuschat.app.presentation.profile.ProfileViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:23:import com.campuschat.app.presentation.settings.SettingsScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:24:import com.campuschat.app.presentation.settings.SettingsViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:25:import com.campuschat.app.presentation.splash.SplashScreen
+app\src\main\java\com\campuschat\app\presentation\navigation\NavGraph.kt:26:import com.campuschat.app.presentation.splash.SplashViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\Screen.kt:1:package com.campuschat.app.presentation.navigation
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:1:package com.campuschat.app.presentation.navigation
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:7:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:8:import com.campuschat.app.core.crypto.CryptoKeyManagerImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:9:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:10:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:11:import com.campuschat.app.core.crypto.SessionStoreImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:12:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:13:import com.campuschat.app.core.network.SupabaseClientProvider
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:14:import com.campuschat.app.data.local.CampusChatDatabase
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:15:import com.campuschat.app.data.realtime.RealtimeMessageObserver
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:16:import com.campuschat.app.data.repository.AuthRepositoryImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:17:import com.campuschat.app.data.repository.DeviceRepositoryImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:18:import com.campuschat.app.data.repository.LocalChatRepositoryImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:19:import com.campuschat.app.data.repository.MessageTransportRepositoryImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:20:import com.campuschat.app.data.repository.PreKeySyncRepositoryImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:21:import com.campuschat.app.data.repository.ProfileRepositoryImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:22:import com.campuschat.app.data.repository.UserDiscoveryRepositoryImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:23:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:24:import com.campuschat.app.domain.service.EncryptedMessageService
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:25:import com.campuschat.app.domain.service.EncryptedMessageServiceImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:26:import com.campuschat.app.domain.service.MessageOutboxService
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:27:import com.campuschat.app.domain.service.MessageOutboxServiceImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:28:import com.campuschat.app.domain.service.PendingMessageService
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:29:import com.campuschat.app.domain.service.PendingMessageServiceImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:30:import com.campuschat.app.domain.service.X3DHSessionService
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:31:import com.campuschat.app.domain.service.X3DHSessionServiceImpl
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:32:import com.campuschat.app.domain.usecase.GetProfileUseCase
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:33:import com.campuschat.app.domain.usecase.LoginUseCase
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:34:import com.campuschat.app.domain.usecase.LogoutUseCase
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:35:import com.campuschat.app.domain.usecase.RegisterUseCase
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:36:import com.campuschat.app.domain.usecase.RestoreSessionUseCase
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:37:import com.campuschat.app.presentation.auth.login.LoginViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:38:import com.campuschat.app.presentation.auth.register.RegisterViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:39:import com.campuschat.app.presentation.chat.conversation.ConversationViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:40:import com.campuschat.app.presentation.chat.newchat.NewChatViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:41:import com.campuschat.app.presentation.home.HomeViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:42:import com.campuschat.app.presentation.profile.ProfileViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:43:import com.campuschat.app.presentation.settings.SettingsViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:44:import com.campuschat.app.presentation.splash.SplashViewModel
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:69:val db = CampusChatDatabase.getInstance(ctx)
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:110:CampusChatSignalProtocolStore(
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:244:): com.campuschat.app.domain.model.EncryptionResult {
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:245:return com.campuschat.app.domain.model.EncryptionResult.SessionNotFound
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:249:envelope: com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:250:): com.campuschat.app.domain.model.DecryptionResult {
+app\src\main\java\com\campuschat\app\presentation\navigation\ViewModelFactory.kt:251:return com.campuschat.app.domain.model.DecryptionResult.SessionNotFound
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:1:package com.campuschat.app.presentation.profile
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:33:import com.campuschat.app.presentation.common.CampusChatCard
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:34:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:35:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:36:import com.campuschat.app.presentation.theme.TextMuted
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:37:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:38:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileScreen.kt:123:CampusChatCard {
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileViewModel.kt:1:package com.campuschat.app.presentation.profile
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileViewModel.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileViewModel.kt:6:import com.campuschat.app.core.session.SessionManager
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileViewModel.kt:7:import com.campuschat.app.domain.model.UserProfile
+app\src\main\java\com\campuschat\app\presentation\profile\ProfileViewModel.kt:8:import com.campuschat.app.domain.usecase.GetProfileUseCase
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:1:package com.campuschat.app.presentation.settings
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:36:import com.campuschat.app.core.config.AppConfig
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:37:import com.campuschat.app.presentation.common.CampusChatCard
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:38:import com.campuschat.app.presentation.common.CampusChatErrorBanner
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:39:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:40:import com.campuschat.app.presentation.theme.ErrorRed
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:41:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:42:import com.campuschat.app.presentation.theme.TextMuted
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:43:import com.campuschat.app.presentation.theme.TextPrimary
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:44:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:87:CampusChatErrorBanner(
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:102:CampusChatCard {
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsScreen.kt:135:CampusChatCard {
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsViewModel.kt:1:package com.campuschat.app.presentation.settings
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsViewModel.kt:5:import com.campuschat.app.core.device.DeviceIdProvider
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsViewModel.kt:6:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\settings\SettingsViewModel.kt:7:import com.campuschat.app.domain.usecase.LogoutUseCase
+app\src\main\java\com\campuschat\app\presentation\splash\SplashScreen.kt:1:package com.campuschat.app.presentation.splash
+app\src\main\java\com\campuschat\app\presentation\splash\SplashScreen.kt:26:import com.campuschat.app.presentation.theme.DarkBackground
+app\src\main\java\com\campuschat\app\presentation\splash\SplashScreen.kt:27:import com.campuschat.app.presentation.theme.PrimaryEmerald
+app\src\main\java\com\campuschat\app\presentation\splash\SplashScreen.kt:28:import com.campuschat.app.presentation.theme.TextSecondary
+app\src\main\java\com\campuschat\app\presentation\splash\SplashViewModel.kt:1:package com.campuschat.app.presentation.splash
+app\src\main\java\com\campuschat\app\presentation\splash\SplashViewModel.kt:5:import com.campuschat.app.core.result.Resource
+app\src\main\java\com\campuschat\app\presentation\splash\SplashViewModel.kt:6:import com.campuschat.app.domain.usecase.RestoreSessionUseCase
+app\src\main\java\com\campuschat\app\presentation\theme\Color.kt:1:package com.campuschat.app.presentation.theme
+app\src\main\java\com\campuschat\app\presentation\theme\Theme.kt:1:package com.campuschat.app.presentation.theme
+app\src\main\java\com\campuschat\app\presentation\theme\Theme.kt:23:fun CampusChatTheme(
+app\src\main\java\com\campuschat\app\presentation\theme\Type.kt:1:package com.campuschat.app.presentation.theme
+app\src\main\res\values\themes.xml:3:<style name="Theme.CampusChat" parent="android:Theme.Material.NoActionBar">
+app\src\test\java\com\campuschat\app\core\crypto\IdentityKeyManagerTest.kt:1:package com.campuschat.app.core.crypto
+app\src\test\java\com\campuschat\app\core\crypto\IdentityKeyManagerTest.kt:108:val storeFile = File(mockFilesDir, "campuschat_identity_store.bin")
+app\src\test\java\com\campuschat\app\core\crypto\PreKeyManagerTest.kt:1:package com.campuschat.app.core.crypto
+app\src\test\java\com\campuschat\app\core\crypto\PreKeyManagerTest.kt:248:val storeFile = File(mockFilesDir, "campuschat_prekey_store.bin")
+app\src\test\java\com\campuschat\app\core\crypto\PreKeyManagerTest.kt:300:val storeFile = File(mockFilesDir, "campuschat_prekey_store.bin")
+app\src\test\java\com\campuschat\app\core\crypto\SecureRandomProviderTest.kt:1:package com.campuschat.app.core.crypto
+app\src\test\java\com\campuschat\app\core\crypto\SessionStoreTest.kt:1:package com.campuschat.app.core.crypto
+app\src\test\java\com\campuschat\app\core\crypto\SessionStoreTest.kt:67:val store = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\core\crypto\SessionStoreTest.kt:87:storeFile = File(tempFolder.root, "campuschat_session_store.bin")
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:1:package com.campuschat.app.data.repository
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:3:import com.campuschat.app.core.crypto.CryptoException
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:4:import com.campuschat.app.core.crypto.CryptoKeyManager
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:5:import com.campuschat.app.core.crypto.EncryptedDataBlob
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:6:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:7:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:8:import com.campuschat.app.core.crypto.SecurityLevel
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:9:import com.campuschat.app.data.dto.ClaimedPreKeyBundleDto
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:10:import com.campuschat.app.data.dto.DeviceIdentityKeyDto
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:11:import com.campuschat.app.data.dto.DeviceOneTimePreKeyDto
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:12:import com.campuschat.app.data.dto.DeviceSignedPreKeyDto
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:194:val identityStoreFile = File(mockFilesDir, "campuschat_identity_store.bin")
+app\src\test\java\com\campuschat\app\data\repository\PreKeySyncRepositoryTest.kt:195:val preKeyStoreFile = File(mockFilesDir, "campuschat_prekey_store.bin")
+app\src\test\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryTest.kt:1:package com.campuschat.app.data.repository
+app\src\test\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryTest.kt:3:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryTest.kt:4:import com.campuschat.app.domain.model.UserDevice
+app\src\test\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryTest.kt:5:import com.campuschat.app.domain.model.UserProfile
+app\src\test\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryTest.kt:6:import com.campuschat.app.domain.repository.UserDiscoveryRepository
+app\src\test\java\com\campuschat\app\data\repository\UserDiscoveryRepositoryTest.kt:7:import com.campuschat.app.presentation.chat.newchat.NewChatViewModel
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:1:package com.campuschat.app.domain.service
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:3:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:4:import com.campuschat.app.core.crypto.CryptoKeyManager
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:5:import com.campuschat.app.core.crypto.EncryptedDataBlob
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:6:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:7:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:8:import com.campuschat.app.core.crypto.SecurityLevel
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:9:import com.campuschat.app.core.crypto.SessionStoreImpl
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:10:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:11:import com.campuschat.app.domain.model.DecryptionResult
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:12:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:13:import com.campuschat.app.domain.model.EncryptionResult
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:14:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:15:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:16:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:55:private lateinit var aliceProtocolStore: CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:71:private lateinit var bobProtocolStore: CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:94:aliceProtocolStore = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:127:bobProtocolStore = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:184:assertTrue("X3DH establishment failed: $x3dhResult", x3dhResult is com.campuschat.app.domain.model.X3DHSessionResult.SessionEstablished)
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:376:val reloadedBobProtocolStore = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\domain\service\EncryptedMessageServiceTest.kt:572:assertTrue(x3dhResult2 is com.campuschat.app.domain.model.X3DHSessionResult.SessionEstablished)
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:1:package com.campuschat.app.domain.service
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:3:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:4:import com.campuschat.app.data.local.entity.ConversationEntity
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:5:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:6:import com.campuschat.app.domain.model.DecryptionResult
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:7:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:8:import com.campuschat.app.domain.model.EncryptionResult
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:9:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:10:import com.campuschat.app.domain.model.UserProfile
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:11:import com.campuschat.app.domain.model.X3DHSessionResult
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:12:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:13:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:14:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\test\java\com\campuschat\app\domain\service\EndToEndMessagingIntegrationTest.kt:15:import com.campuschat.app.presentation.chat.conversation.ConversationViewModel
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:1:package com.campuschat.app.domain.service
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:3:import com.campuschat.app.core.crypto.CampusChatSessionStore
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:4:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:5:import com.campuschat.app.core.crypto.CryptoKeyManager
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:6:import com.campuschat.app.core.crypto.EncryptedDataBlob
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:7:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:8:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:9:import com.campuschat.app.core.crypto.SecurityLevel
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:10:import com.campuschat.app.core.crypto.SessionStoreImpl
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:11:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:12:import com.campuschat.app.data.dto.DeviceDto
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:13:import com.campuschat.app.data.repository.DeviceRepositoryImpl
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:14:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:15:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:16:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:17:import com.campuschat.app.domain.model.UserDevice
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:18:import com.campuschat.app.domain.model.X3DHSessionResult
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:19:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:20:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:21:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:22:import com.campuschat.app.presentation.chat.conversation.ConversationViewModel
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:65:private lateinit var protocolStore: CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:102:protocolStore = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:192:val deviceRepo = object : com.campuschat.app.domain.repository.DeviceRepository {
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:248:assertTrue("Expected Success but got $encResult", encResult is com.campuschat.app.domain.model.EncryptionResult.Success)
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:249:val envelope = (encResult as com.campuschat.app.domain.model.EncryptionResult.Success).envelope
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:268:val fakeOutbox = object : com.campuschat.app.domain.service.MessageOutboxService {
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:281:val fakePending = object : com.campuschat.app.domain.service.PendingMessageService {
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:282:override suspend fun fetchAndDecryptPendingMessages(localDeviceId: String): com.campuschat.app.domain.service.ProcessPendingResult {
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:283:return com.campuschat.app.domain.service.ProcessPendingResult.Processed(emptyList(), 0)
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:314:val mockOutbox = mock(com.campuschat.app.domain.service.MessageOutboxService::class.java)
+app\src\test\java\com\campuschat\app\domain\service\FirstMessageX3DHFixTest.kt:315:val mockPending = mock(com.campuschat.app.domain.service.PendingMessageService::class.java)
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:1:package com.campuschat.app.domain.service
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:3:import com.campuschat.app.core.crypto.CampusChatSessionStore
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:4:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:5:import com.campuschat.app.core.crypto.CryptoKeyManager
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:6:import com.campuschat.app.core.crypto.EncryptedDataBlob
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:7:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:8:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:9:import com.campuschat.app.core.crypto.SecurityLevel
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:10:import com.campuschat.app.core.crypto.SessionStoreImpl
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:11:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:12:import com.campuschat.app.domain.model.X3DHSessionResult
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:13:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:14:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:47:private lateinit var protocolStore: CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:71:protocolStore = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:204:override suspend fun signUp(email: String, password: String) = com.campuschat.app.core.result.Resource.Error("Not implemented")
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:205:override suspend fun signIn(email: String, password: String) = com.campuschat.app.core.result.Resource.Error("Not implemented")
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:206:override suspend fun signOut() = com.campuschat.app.core.result.Resource.Success(Unit)
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:208:override suspend fun restoreSession() = com.campuschat.app.core.result.Resource.Success(null)
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:212:override suspend fun publishLocalPublicKeys(userId: String, deviceId: String, registrationId: Int) = com.campuschat.app.core.result.Resource.Success(Unit)
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:213:override suspend fun rotateSignedPreKey(userId: String, deviceId: String) = com.campuschat.app.core.result.Resource.Success(Unit)
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:214:override suspend fun replenishOneTimePreKeys(userId: String, deviceId: String) = com.campuschat.app.core.result.Resource.Success(0)
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:215:override suspend fun claimPreKeyBundle(recipientDeviceId: String) = com.campuschat.app.core.result.Resource.Success(bundle)
+app\src\test\java\com\campuschat\app\domain\service\KyberPreKeyProvisioningTest.kt:216:override suspend fun getRemoteUnconsumedPreKeyCount(deviceId: String) = com.campuschat.app.core.result.Resource.Success(100)
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:1:package com.campuschat.app.domain.service
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:3:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:4:import com.campuschat.app.core.crypto.CryptoKeyManager
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:5:import com.campuschat.app.core.crypto.EncryptedDataBlob
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:6:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:7:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:8:import com.campuschat.app.core.crypto.SecurityLevel
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:9:import com.campuschat.app.core.crypto.SessionStoreImpl
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:10:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:11:import com.campuschat.app.data.dto.EncryptedMessageDto
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:12:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:13:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:14:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:15:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:16:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:193:private lateinit var aliceProtocolStore: CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:194:private lateinit var bobProtocolStore1: CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:221:aliceProtocolStore = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:241:bobProtocolStore1 = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\domain\service\MessageTransportTest.kt:307:private class DummyPreKeySyncRepository : com.campuschat.app.domain.repository.PreKeySyncRepository {
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:1:package com.campuschat.app.domain.service
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:3:import com.campuschat.app.core.crypto.CryptoKeyManager
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:4:import com.campuschat.app.core.crypto.EncryptedDataBlob
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:5:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:6:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:7:import com.campuschat.app.core.crypto.SecurityLevel
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:8:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:9:import com.campuschat.app.data.dto.DeviceIdentityKeyDto
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:10:import com.campuschat.app.data.dto.DeviceOneTimePreKeyDto
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:11:import com.campuschat.app.data.dto.DeviceSignedPreKeyDto
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:12:import com.campuschat.app.domain.model.UserDevice
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:13:import com.campuschat.app.domain.model.UserProfile
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:14:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:15:import com.campuschat.app.domain.repository.DeviceRepository
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:16:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:17:import com.campuschat.app.domain.repository.ProfileRepository
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:18:import com.campuschat.app.domain.usecase.LoginUseCase
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:19:import com.campuschat.app.domain.usecase.RegisterUseCase
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:20:import com.campuschat.app.domain.usecase.RestoreSessionUseCase
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:203:override suspend fun claimPreKeyBundle(recipientDeviceId: String): Resource<com.campuschat.app.domain.model.RemotePreKeyBundle> = Resource.Error("Not implemented")
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:315:assertTrue("campuschat_identity_store.bin must exist on device", File(mockFilesDir, "campuschat_identity_store.bin").exists())
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:316:assertTrue("campuschat_prekey_store.bin must exist on device", File(mockFilesDir, "campuschat_prekey_store.bin").exists())
+app\src\test\java\com\campuschat\app\domain\service\SignalPublicKeyPublishingTest.kt:394:com.campuschat.app.core.session.SessionManager.setAuthenticated((signInRes as Resource.Success).data)
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:1:package com.campuschat.app.domain.service
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:3:import com.campuschat.app.core.crypto.CampusChatSessionStore
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:4:import com.campuschat.app.core.crypto.CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:5:import com.campuschat.app.core.crypto.CryptoKeyManager
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:6:import com.campuschat.app.core.crypto.EncryptedDataBlob
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:7:import com.campuschat.app.core.crypto.IdentityKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:8:import com.campuschat.app.core.crypto.PreKeyManagerImpl
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:9:import com.campuschat.app.core.crypto.SecurityLevel
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:10:import com.campuschat.app.core.crypto.SessionStoreImpl
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:11:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:12:import com.campuschat.app.domain.model.RemotePreKeyBundle
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:13:import com.campuschat.app.domain.model.X3DHSessionResult
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:14:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:15:import com.campuschat.app.domain.repository.PreKeySyncRepository
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:47:private lateinit var protocolStore: CampusChatSignalProtocolStore
+app\src\test\java\com\campuschat\app\domain\service\X3DHSessionServiceTest.kt:92:protocolStore = CampusChatSignalProtocolStore(
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:1:package com.campuschat.app.presentation
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:3:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:4:import com.campuschat.app.data.local.entity.ConversationEntity
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:5:import com.campuschat.app.data.local.entity.MessageEntity
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:6:import com.campuschat.app.data.realtime.RealtimeMessageObserver
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:7:import com.campuschat.app.domain.model.EncryptedMessageEnvelope
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:8:import com.campuschat.app.domain.model.PendingTransportMessage
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:9:import com.campuschat.app.domain.model.UserDevice
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:10:import com.campuschat.app.domain.model.UserProfile
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:11:import com.campuschat.app.domain.model.X3DHSessionResult
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:12:import com.campuschat.app.domain.repository.LocalChatRepository
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:13:import com.campuschat.app.domain.repository.UserDiscoveryRepository
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:14:import com.campuschat.app.domain.service.MessageOutboxService
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:15:import com.campuschat.app.domain.service.PendingMessageService
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:16:import com.campuschat.app.domain.service.ProcessPendingResult
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:17:import com.campuschat.app.domain.service.ReceivedMessageResult
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:18:import com.campuschat.app.domain.service.X3DHSessionService
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:19:import com.campuschat.app.presentation.chat.conversation.ConversationViewModel
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:20:import com.campuschat.app.presentation.chat.newchat.NewChatViewModel
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:21:import com.campuschat.app.presentation.home.HomeViewModel
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:60:val fakeProfileRepo = object : com.campuschat.app.domain.repository.ProfileRepository {
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:72:getProfileUseCase = com.campuschat.app.domain.usecase.GetProfileUseCase(fakeProfileRepo),
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:98:val fakeProfileRepo = object : com.campuschat.app.domain.repository.ProfileRepository {
+app\src\test\java\com\campuschat\app\presentation\UiAndMessagingIntegrationTest.kt:111:getProfileUseCase = com.campuschat.app.domain.usecase.GetProfileUseCase(fakeProfileRepo),
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:1:package com.campuschat.app.presentation.navigation
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:3:import com.campuschat.app.core.result.Resource
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:4:import com.campuschat.app.domain.model.UserProfile
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:5:import com.campuschat.app.domain.repository.AuthRepository
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:6:import com.campuschat.app.domain.repository.MessageTransportRepository
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:7:import com.campuschat.app.domain.repository.UserDiscoveryRepository
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:8:import com.campuschat.app.domain.service.EncryptedMessageService
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:9:import com.campuschat.app.domain.service.MessageOutboxServiceImpl
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:10:import com.campuschat.app.domain.service.PendingMessageServiceImpl
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:11:import com.campuschat.app.domain.usecase.GetProfileUseCase
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:12:import com.campuschat.app.presentation.chat.conversation.ConversationViewModel
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:13:import com.campuschat.app.presentation.chat.newchat.NewChatViewModel
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:14:import com.campuschat.app.presentation.home.HomeViewModel
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:49:val dummyProfileRepo = object : com.campuschat.app.domain.repository.ProfileRepository {
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:94:override suspend fun enqueueEncryptedMessage(envelope: com.campuschat.app.domain.model.EncryptedMessageEnvelope, ttlSeconds: Int) = Resource.Error("Not implemented")
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:95:override suspend fun fetchPendingMessages(deviceId: String): Resource<List<com.campuschat.app.domain.model.PendingTransportMessage>> = Resource.Success(emptyList())
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:100:override suspend fun encryptMessage(senderDeviceId: String, recipientUserId: String, recipientDeviceId: String, recipientRegistrationId: Int, plaintext: String) = com.campuschat.app.domain.model.EncryptionResult.SessionNotFound
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:101:override suspend fun decryptMessage(envelope: com.campuschat.app.domain.model.EncryptedMessageEnvelope) = com.campuschat.app.domain.model.DecryptionResult.SessionNotFound
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:135:override suspend fun enqueueEncryptedMessage(envelope: com.campuschat.app.domain.model.EncryptedMessageEnvelope, ttlSeconds: Int) = Resource.Error("Not implemented")
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:136:override suspend fun fetchPendingMessages(deviceId: String): Resource<List<com.campuschat.app.domain.model.PendingTransportMessage>> = Resource.Success(emptyList())
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:141:override suspend fun encryptMessage(senderDeviceId: String, recipientUserId: String, recipientDeviceId: String, recipientRegistrationId: Int, plaintext: String) = com.campuschat.app.domain.model.EncryptionResult.SessionNotFound
+app\src\test\java\com\campuschat\app\presentation\navigation\ChatShellNavigationTest.kt:142:override suspend fun decryptMessage(envelope: com.campuschat.app.domain.model.EncryptedMessageEnvelope) = com.campuschat.app.domain.model.DecryptionResult.SessionNotFound
+scripts\verify_schema.sql:1:-- CampusChat Verification SQL Script
+scripts\verify_schema.sql:24:RAISE NOTICE 'CampusChat Backend Schema Verification';
+supabase\migrations\20260920000000_create_campuschat_schema.sql:1:-- CampusChat Supabase Migration: 00 - Schema Creation
+supabase\migrations\20260920000001_create_campuschat_indexes.sql:1:-- CampusChat Supabase Migration: 01 - Performance Indexes
+supabase\migrations\20260920000002_create_campuschat_rls.sql:1:-- CampusChat Supabase Migration: 02 - Row Level Security (RLS) Policies
+supabase\migrations\20260920000003_create_campuschat_storage.sql:1:-- CampusChat Supabase Migration: 03 - Storage Bucket & Storage RLS
+supabase\migrations\20260920000004_create_campuschat_functions_triggers.sql:1:-- CampusChat Supabase Migration: 04 - Functions & Triggers
+supabase\migrations\20260920000005_campuschat_all_in_one.sql:2:-- CampusChat Supabase Migration: ALL-IN-ONE CONSOLIDATED SCRIPT
+supabase\migrations\20260920000005_campuschat_all_in_one.sql:3:-- Application: CampusChat (Android-first Private Messaging Backend)
+supabase\migrations\20260920000006_create_signal_public_keys.sql:1:-- CampusChat Supabase Migration: 06 - Signal Protocol Public Key Foundation (Hardened)
+supabase\migrations\20260920000007_create_encrypted_message_queue.sql:1:-- CampusChat Supabase Migration: 07 - Encrypted Message Transport Queue
+supabase\migrations\20260920000008_allow_authenticated_read_profiles_devices.sql:1:-- CampusChat Supabase Migration: 08 - Allow Authenticated Read Profiles and Devices
+supabase\migrations\20260920000009_create_kyber_prekeys.sql:1:-- CampusChat Supabase Migration: 09 - Signal Protocol Post-Quantum Kyber PreKeys

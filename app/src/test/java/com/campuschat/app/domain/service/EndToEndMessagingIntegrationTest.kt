@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -64,10 +65,15 @@ class EndToEndMessagingIntegrationTest {
         private val conversationsFlow = MutableStateFlow<List<ConversationEntity>>(emptyList())
         private val messagesFlow = MutableStateFlow<List<MessageEntity>>(emptyList())
 
-        override fun getAllConversations(): Flow<List<ConversationEntity>> = conversationsFlow
+        override fun getAllConversations(localAccountId: String): Flow<List<ConversationEntity>> {
+            return conversationsFlow.map { list ->
+                if (localAccountId.isBlank()) list else list.filter { it.localAccountId == localAccountId }
+            }
+        }
 
-        override suspend fun getConversation(recipientUserId: String, recipientDeviceId: String): ConversationEntity? {
-            return conversations["${recipientUserId}_${recipientDeviceId}"]
+        override suspend fun getConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String): ConversationEntity? {
+            val id = if (localAccountId.isNotBlank()) "${localAccountId}_${recipientUserId}_${recipientDeviceId}" else "${recipientUserId}_${recipientDeviceId}"
+            return conversations[id] ?: conversations["${recipientUserId}_${recipientDeviceId}"]
         }
 
         override suspend fun saveConversation(conversation: ConversationEntity) {
@@ -75,19 +81,25 @@ class EndToEndMessagingIntegrationTest {
             conversationsFlow.value = conversations.values.toList()
         }
 
-        override fun getMessagesForConversation(recipientUserId: String, recipientDeviceId: String): Flow<List<MessageEntity>> {
-            return messagesFlow
+        override fun getMessagesForConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String): Flow<List<MessageEntity>> {
+            val convId = if (localAccountId.isNotBlank()) "${localAccountId}_${recipientUserId}_${recipientDeviceId}" else "${recipientUserId}_${recipientDeviceId}"
+            return messagesFlow.map { list ->
+                list.filter { it.conversationId == convId || it.conversationId == "${recipientUserId}_${recipientDeviceId}" }
+            }
         }
 
         override suspend fun saveMessage(message: MessageEntity) {
             messages[message.id] = message
             messagesFlow.value = messages.values.toList()
             val convId = message.conversationId
+            val targetRecipientUserId = if (message.direction == "SENT") message.recipientUserId else message.senderUserId
+            val targetRecipientDeviceId = if (message.direction == "SENT") message.recipientDeviceId else message.senderDeviceId
             conversations[convId] = ConversationEntity(
                 id = convId,
-                recipientUserId = message.recipientUserId,
-                recipientDeviceId = message.recipientDeviceId,
-                recipientUsername = "user_${message.recipientUserId.take(4)}",
+                localAccountId = message.localAccountId,
+                recipientUserId = targetRecipientUserId,
+                recipientDeviceId = targetRecipientDeviceId,
+                recipientUsername = "user_${targetRecipientUserId.take(4)}",
                 recipientDisplayName = "Recipient User",
                 lastMessageSnippet = message.content,
                 lastMessageTimestamp = message.timestamp
@@ -104,6 +116,12 @@ class EndToEndMessagingIntegrationTest {
         }
 
         override suspend fun getMessageById(messageId: String): MessageEntity? = messages[messageId]
+
+        override suspend fun getPendingOutboundMessages(localAccountId: String): List<MessageEntity> {
+            return messages.values.filter {
+                it.localAccountId == localAccountId && it.deliveryState in listOf("QUEUED", "PENDING", "FAILED")
+            }.sortedBy { it.timestamp }
+        }
     }
 
     private class FakeAuthRepository(private val mockUserId: String = "sender-user-100") : AuthRepository {
@@ -446,7 +464,8 @@ class EndToEndMessagingIntegrationTest {
         val fakeLocalRepo = FakeLocalChatRepository()
         val msg = MessageEntity(
             id = "pending-id-0",
-            conversationId = "sender-1_dev-s",
+            localAccountId = "rec-1",
+            conversationId = "rec-1_sender-1_dev-s",
             senderUserId = "sender-1",
             senderDeviceId = "dev-s",
             recipientUserId = "rec-1",
@@ -572,13 +591,13 @@ class EndToEndMessagingIntegrationTest {
     @Test
     fun test17_ConversationReloadRestoresLocalHistory() = runTest {
         val fakeLocalRepo = FakeLocalChatRepository()
-        val msg1 = MessageEntity("m1", "user-2_dev-2", "self", "dev-1", "user-2", "dev-2", "SENT", "First", 1000L, "SENT")
-        val msg2 = MessageEntity("m2", "user-2_dev-2", "user-2", "dev-2", "self", "dev-1", "RECEIVED", "Second", 2000L, "DELIVERED")
+        val msg1 = MessageEntity("m1", "self", "self_user-2_dev-2", "self", "dev-1", "user-2", "dev-2", "SENT", "First", 1000L, "SENT")
+        val msg2 = MessageEntity("m2", "self", "self_user-2_dev-2", "user-2", "dev-2", "self", "dev-1", "RECEIVED", "Second", 2000L, "DELIVERED")
 
         fakeLocalRepo.saveMessage(msg1)
         fakeLocalRepo.saveMessage(msg2)
 
-        val conv = fakeLocalRepo.getConversation("user-2", "dev-2")
+        val conv = fakeLocalRepo.getConversation("self", "user-2", "dev-2")
         assertNotNull(conv)
         assertEquals("Second", conv?.lastMessageSnippet)
         assertEquals(2, fakeLocalRepo.messages.size)
@@ -588,14 +607,14 @@ class EndToEndMessagingIntegrationTest {
     @Test
     fun test18_MultiDeviceConversationsRemainIsolated() = runTest {
         val fakeLocalRepo = FakeLocalChatRepository()
-        val msgDevA = MessageEntity("m-devA", "user-X_device-A", "user-X", "device-A", "self", "my-dev", "RECEIVED", "Msg A", 100L, "DELIVERED")
-        val msgDevB = MessageEntity("m-devB", "user-X_device-B", "user-X", "device-B", "self", "my-dev", "RECEIVED", "Msg B", 200L, "DELIVERED")
+        val msgDevA = MessageEntity("m-devA", "self", "self_user-X_device-A", "user-X", "device-A", "self", "my-dev", "RECEIVED", "Msg A", 100L, "DELIVERED")
+        val msgDevB = MessageEntity("m-devB", "self", "self_user-X_device-B", "user-X", "device-B", "self", "my-dev", "RECEIVED", "Msg B", 200L, "DELIVERED")
 
         fakeLocalRepo.saveMessage(msgDevA)
         fakeLocalRepo.saveMessage(msgDevB)
 
-        assertEquals("user-X_device-A", msgDevA.conversationId)
-        assertEquals("user-X_device-B", msgDevB.conversationId)
+        assertEquals("self_user-X_device-A", msgDevA.conversationId)
+        assertEquals("self_user-X_device-B", msgDevB.conversationId)
         assertFalse(msgDevA.conversationId == msgDevB.conversationId)
         assertEquals(2, fakeLocalRepo.conversations.size)
     }

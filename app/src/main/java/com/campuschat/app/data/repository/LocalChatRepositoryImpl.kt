@@ -12,22 +12,34 @@ class LocalChatRepositoryImpl(
     private val messageDao: MessageDao
 ) : LocalChatRepository {
 
-    override fun getAllConversations(): Flow<List<ConversationEntity>> {
-        return conversationDao.getAllConversations()
+    override fun getAllConversations(localAccountId: String): Flow<List<ConversationEntity>> {
+        return if (localAccountId.isNotBlank()) {
+            conversationDao.getConversationsForAccount(localAccountId)
+        } else {
+            conversationDao.getAllConversations()
+        }
     }
 
-    override suspend fun getConversation(recipientUserId: String, recipientDeviceId: String): ConversationEntity? {
-        val id = "${recipientUserId}_${recipientDeviceId}"
-        return conversationDao.getConversationById(id)
+    override suspend fun getConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String): ConversationEntity? {
+        if (localAccountId.isNotBlank()) {
+            val conv = conversationDao.getConversation(localAccountId, recipientUserId, recipientDeviceId)
+            if (conv != null) return conv
+        }
+        val fallbackId = if (localAccountId.isNotBlank()) "${localAccountId}_${recipientUserId}_${recipientDeviceId}" else "${recipientUserId}_${recipientDeviceId}"
+        return conversationDao.getConversationById(fallbackId)
     }
 
     override suspend fun saveConversation(conversation: ConversationEntity) {
         conversationDao.insertOrUpdateConversation(conversation)
     }
 
-    override fun getMessagesForConversation(recipientUserId: String, recipientDeviceId: String): Flow<List<MessageEntity>> {
-        val conversationId = "${recipientUserId}_${recipientDeviceId}"
-        return messageDao.getMessagesForConversation(conversationId)
+    override fun getMessagesForConversation(localAccountId: String, recipientUserId: String, recipientDeviceId: String): Flow<List<MessageEntity>> {
+        val conversationId = if (localAccountId.isNotBlank()) "${localAccountId}_${recipientUserId}_${recipientDeviceId}" else "${recipientUserId}_${recipientDeviceId}"
+        return if (localAccountId.isNotBlank()) {
+            messageDao.getMessagesForAccountAndConversation(localAccountId, conversationId)
+        } else {
+            messageDao.getMessagesForConversation(conversationId)
+        }
     }
 
     override suspend fun saveMessage(message: MessageEntity) {
@@ -35,11 +47,14 @@ class LocalChatRepositoryImpl(
         // Also update conversation last message summary
         val conversationId = message.conversationId
         val existing = conversationDao.getConversationById(conversationId)
+        val targetRecipientUserId = if (message.direction == "SENT") message.recipientUserId else message.senderUserId
+        val targetRecipientDeviceId = if (message.direction == "SENT") message.recipientDeviceId else message.senderDeviceId
         val updatedConv = ConversationEntity(
             id = conversationId,
-            recipientUserId = message.recipientUserId,
-            recipientDeviceId = message.recipientDeviceId,
-            recipientUsername = existing?.recipientUsername ?: message.recipientUserId.take(8),
+            localAccountId = message.localAccountId,
+            recipientUserId = targetRecipientUserId,
+            recipientDeviceId = targetRecipientDeviceId,
+            recipientUsername = existing?.recipientUsername ?: targetRecipientUserId.take(8),
             recipientDisplayName = existing?.recipientDisplayName ?: "Campus User",
             lastMessageSnippet = message.content,
             lastMessageTimestamp = message.timestamp,
@@ -54,5 +69,9 @@ class LocalChatRepositoryImpl(
 
     override suspend fun getMessageById(messageId: String): MessageEntity? {
         return messageDao.getMessageById(messageId)
+    }
+
+    override suspend fun getPendingOutboundMessages(localAccountId: String): List<MessageEntity> {
+        return messageDao.getPendingOutboundMessages(localAccountId)
     }
 }

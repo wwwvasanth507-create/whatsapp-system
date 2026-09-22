@@ -5,6 +5,7 @@ import com.campuschat.app.core.crypto.PreKeyManager
 import com.campuschat.app.core.result.Resource
 import com.campuschat.app.data.dto.ClaimedPreKeyBundleDto
 import com.campuschat.app.data.dto.DeviceIdentityKeyDto
+import com.campuschat.app.data.dto.DeviceKyberPreKeyDto
 import com.campuschat.app.data.dto.DeviceOneTimePreKeyDto
 import com.campuschat.app.data.dto.DeviceSignedPreKeyDto
 import com.campuschat.app.domain.model.RemotePreKeyBundle
@@ -32,7 +33,7 @@ class PreKeySyncRepositoryImpl(
                 userId = userId,
                 identityPublicKey = pubIdentityKeyBase64
             )
-            supabaseClient.postgrest["device_identity_keys"].upsert(identityDto)
+            supabaseClient.postgrest["device_identity_keys"].upsert(identityDto, onConflict = "device_id")
 
             // 2. Upsert Current Signed PreKey
             val localSpk = preKeyManager.getCurrentSignedPreKey(deviceId)
@@ -49,9 +50,26 @@ class PreKeySyncRepositoryImpl(
                 signature = spkSignatureBase64,
                 isActive = true
             )
-            supabaseClient.postgrest["device_signed_prekeys"].upsert(spkDto)
+            supabaseClient.postgrest["device_signed_prekeys"].upsert(spkDto, onConflict = "device_id,key_id")
 
-            // 3. Upsert Available One-Time PreKeys
+            // 3. Upsert Current Kyber PreKey
+            val localKyber = preKeyManager.getCurrentKyberPreKey(deviceId)
+            if (localKyber != null) {
+                val kyberPublicKeyBase64 = encodeBase64(localKyber.keyPair.publicKey.serialize())
+                val kyberSignatureBase64 = encodeBase64(localKyber.signature)
+
+                val kyberDto = DeviceKyberPreKeyDto(
+                    deviceId = deviceId,
+                    userId = userId,
+                    keyId = localKyber.id,
+                    publicKey = kyberPublicKeyBase64,
+                    signature = kyberSignatureBase64,
+                    isActive = true
+                )
+                supabaseClient.postgrest["device_kyber_prekeys"].upsert(kyberDto, onConflict = "device_id,key_id")
+            }
+
+            // 4. Upsert Available One-Time PreKeys
             val availableOpks = preKeyManager.getAvailableOneTimePreKeys(deviceId)
             val opkDtos = availableOpks.map { opk ->
                 DeviceOneTimePreKeyDto(
@@ -64,7 +82,7 @@ class PreKeySyncRepositoryImpl(
             }
 
             if (opkDtos.isNotEmpty()) {
-                supabaseClient.postgrest["device_one_time_prekeys"].upsert(opkDtos)
+                supabaseClient.postgrest["device_one_time_prekeys"].upsert(opkDtos, onConflict = "device_id,key_id")
             }
 
             Resource.Success(Unit)
@@ -145,7 +163,10 @@ class PreKeySyncRepositoryImpl(
                 signedPreKeyBase64 = resultDto.signedPreKey,
                 signedPreKeySignatureBase64 = resultDto.signedPreKeySignature,
                 oneTimePreKeyId = resultDto.oneTimePreKeyId,
-                oneTimePreKeyBase64 = resultDto.oneTimePreKey
+                oneTimePreKeyBase64 = resultDto.oneTimePreKey,
+                kyberPreKeyId = resultDto.kyberPreKeyId,
+                kyberPreKeyBase64 = resultDto.kyberPreKey,
+                kyberPreKeySignatureBase64 = resultDto.kyberPreKeySignature
             )
 
             Resource.Success(bundle)

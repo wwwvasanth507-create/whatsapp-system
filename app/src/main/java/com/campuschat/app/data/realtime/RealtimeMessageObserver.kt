@@ -19,32 +19,59 @@ class RealtimeMessageObserver(
 ) {
     private var job: Job? = null
 
+    val isObserving: Boolean
+        get() = job?.isActive == true
+
+    @Synchronized
     fun startObserving(scope: CoroutineScope = CoroutineScope(Dispatchers.IO)) {
+        if (isObserving) {
+            // Already observing - prevent duplicate channel subscriptions
+            return
+        }
         stopObserving()
+
+        // Check if an authenticated session exists before connecting
+        val userId = com.campuschat.app.core.session.SessionManager.getCurrentUserId()
+        if (userId.isNullOrEmpty()) {
+            return
+        }
+
         job = scope.launch {
             try {
-                val channel = supabaseClient.realtime.channel("public_messages_notification")
+                val channel = supabaseClient.realtime.channel("public_messages_notification_${userId.take(8)}")
                 val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
                     table = "messages"
                 }
-                
+
                 channel.subscribe()
 
+                // Trigger an initial fetch when starting observation to collect any missed messages
+                val initialDeviceId = DeviceIdProvider.getDeviceId()
+                pendingMessageService.fetchAndDecryptPendingMessages(initialDeviceId)
+
                 changeFlow
-                    .catch { /* ignore network error, fall back to periodic poll if offline */ }
+                    .catch { /* ignore network error; retry trigger handling on reconnect */ }
                     .collect { action ->
                         val localDeviceId = DeviceIdProvider.getDeviceId()
-                        // Realtime event acts purely as a notification trigger to fetch pending messages via secure RPC
+                        // Realtime payload is strictly treated as a trigger/notification ONLY.
+                        // Zero plaintext or ciphertext is read from the realtime payload.
                         pendingMessageService.fetchAndDecryptPendingMessages(localDeviceId)
                     }
             } catch (e: Exception) {
-                // Safe error handling without logging message content
+                // Safe error handling without logging sensitive message or key data
             }
         }
     }
 
+    @Synchronized
     fun stopObserving() {
         job?.cancel()
         job = null
+    }
+
+    @Synchronized
+    fun reconnect(scope: CoroutineScope = CoroutineScope(Dispatchers.IO)) {
+        stopObserving()
+        startObserving(scope)
     }
 }

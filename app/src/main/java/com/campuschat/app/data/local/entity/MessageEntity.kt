@@ -1,11 +1,19 @@
 package com.campuschat.app.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "messages")
+@Entity(
+    tableName = "messages",
+    indices = [
+        Index(value = ["localAccountId"]),
+        Index(value = ["conversationId"])
+    ]
+)
 data class MessageEntity(
     @PrimaryKey val id: String,
+    val localAccountId: String,
     val conversationId: String,
     val senderUserId: String,
     val senderDeviceId: String,

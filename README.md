@@ -1,6 +1,6 @@
-# CampusChat - Supabase Backend Foundation (Step 1)
+# KUTTYCHAT - Supabase Backend Foundation (Step 1)
 
-**CampusChat** is an Android-first private messaging application built for secure, end-to-end encrypted messaging with multi-device support, temporary encrypted media uploads, and push notifications.
+**KUTTYCHAT** is an Android-first private messaging application built for secure, end-to-end encrypted messaging with multi-device support, temporary encrypted media uploads, and push notifications.
 
 This repository contains **STEP 1 ONLY: The Supabase Backend Foundation**.
 

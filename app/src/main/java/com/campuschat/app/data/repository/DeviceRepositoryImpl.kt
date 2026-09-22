@@ -9,20 +9,23 @@ import io.github.jan.supabase.postgrest.postgrest
 import java.time.Instant
 
 class DeviceRepositoryImpl(
-    private val supabaseClient: SupabaseClient
+    private val supabaseClient: SupabaseClient,
+    private val registrationIdProvider: (() -> Int)? = null
 ) : DeviceRepository {
 
     override suspend fun registerOrUpdateDevice(device: UserDevice): Resource<UserDevice> {
         return try {
             val deviceId = device.id ?: return Resource.Error("Device ID cannot be null for registration.")
+            val regId = device.registrationId ?: registrationIdProvider?.invoke() ?: 1
             val dto = DeviceInsertDto(
                 id = deviceId,
                 userId = device.userId,
                 deviceName = device.deviceName,
-                platform = device.platform
+                platform = device.platform,
+                registrationId = regId
             )
             supabaseClient.postgrest["devices"].upsert(dto)
-            Resource.Success(device)
+            Resource.Success(device.copy(registrationId = regId))
         } catch (e: Exception) {
             Resource.Error(sanitizeErrorMessage(e), e)
         }

@@ -1,5 +1,6 @@
 package com.campuschat.app.domain.usecase
 
+import android.util.Log
 import com.campuschat.app.core.device.DeviceIdProvider
 import com.campuschat.app.core.result.Resource
 import com.campuschat.app.core.session.SessionManager
@@ -7,12 +8,14 @@ import com.campuschat.app.domain.model.UserDevice
 import com.campuschat.app.domain.model.UserProfile
 import com.campuschat.app.domain.repository.AuthRepository
 import com.campuschat.app.domain.repository.DeviceRepository
+import com.campuschat.app.domain.repository.PreKeySyncRepository
 import com.campuschat.app.domain.repository.ProfileRepository
 
 class RegisterUseCase(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
-    private val deviceRepository: DeviceRepository
+    private val deviceRepository: DeviceRepository,
+    private val preKeySyncRepository: PreKeySyncRepository? = null
 ) {
     suspend operator fun invoke(
         email: String,
@@ -25,7 +28,7 @@ class RegisterUseCase(
         val trimmedUsername = username.trim()
         val trimmedDisplayName = displayName.trim()
 
-        if (trimmedEmail.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(trimmedEmail).matches()) {
+        if (trimmedEmail.isEmpty() || !isValidEmail(trimmedEmail)) {
             return Resource.Error("Please enter a valid email address.")
         }
         if (password.length < 6) {
@@ -74,8 +77,18 @@ class RegisterUseCase(
                 if (deviceResult is Resource.Error) {
                     return Resource.Error("Profile created, but device registration failed: ${deviceResult.message}")
                 }
+                val registeredDevice = (deviceResult as? Resource.Success)?.data
+                val regId = registeredDevice?.registrationId ?: 1
 
-                // 4. Update Session Manager
+                // 5. Publish Signal Public Keys to Supabase
+                if (preKeySyncRepository != null) {
+                    val syncResult = preKeySyncRepository.publishLocalPublicKeys(userId, deviceId, regId)
+                    if (syncResult is Resource.Error) {
+                        Log.e("RegisterUseCase", "Signal public key publishing non-fatal error: ${syncResult.message}")
+                    }
+                }
+
+                // 6. Update Session Manager
                 SessionManager.setAuthenticated(user)
 
                 val finalProfile = (profileResult as? Resource.Success)?.data ?: UserProfile(
@@ -85,6 +98,14 @@ class RegisterUseCase(
                 )
                 Resource.Success(finalProfile)
             }
+        }
+    }
+
+    private fun isValidEmail(email: String): Boolean {
+        return try {
+            android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+        } catch (e: Throwable) {
+            email.contains("@") && email.contains(".")
         }
     }
 }

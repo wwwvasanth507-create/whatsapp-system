@@ -39,8 +39,9 @@ class HomeViewModel(
 
     private fun observeConversations() {
         val repo = localChatRepository ?: return
+        val localAccountId = SessionManager.getCurrentUserId() ?: ""
         viewModelScope.launch {
-            repo.getAllConversations()
+            repo.getAllConversations(localAccountId)
                 .catch { /* ignore */ }
                 .collect { entityList ->
                     val items = entityList.map { entity ->

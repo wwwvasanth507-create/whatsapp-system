@@ -22,6 +22,17 @@ data class DeviceSignedPreKeyDto(
 )
 
 @Serializable
+data class DeviceKyberPreKeyDto(
+    @SerialName("id") val id: String? = null,
+    @SerialName("device_id") val deviceId: String,
+    @SerialName("user_id") val userId: String,
+    @SerialName("key_id") val keyId: Int,
+    @SerialName("public_key") val publicKey: String,
+    @SerialName("signature") val signature: String,
+    @SerialName("is_active") val isActive: Boolean = true
+)
+
+@Serializable
 data class DeviceOneTimePreKeyDto(
     @SerialName("id") val id: String? = null,
     @SerialName("device_id") val deviceId: String,
@@ -41,5 +52,8 @@ data class ClaimedPreKeyBundleDto(
     @SerialName("signed_prekey") val signedPreKey: String,
     @SerialName("signed_prekey_signature") val signedPreKeySignature: String,
     @SerialName("one_time_prekey_id") val oneTimePreKeyId: Int? = null,
-    @SerialName("one_time_prekey") val oneTimePreKey: String? = null
+    @SerialName("one_time_prekey") val oneTimePreKey: String? = null,
+    @SerialName("kyber_prekey_id") val kyberPreKeyId: Int? = null,
+    @SerialName("kyber_prekey") val kyberPreKey: String? = null,
+    @SerialName("kyber_prekey_signature") val kyberPreKeySignature: String? = null
 )

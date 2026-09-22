@@ -8,6 +8,7 @@ import com.campuschat.app.domain.model.X3DHSessionResult
 import com.campuschat.app.domain.repository.LocalChatRepository
 import com.campuschat.app.domain.service.MessageOutboxService
 import com.campuschat.app.domain.service.PendingMessageService
+import com.campuschat.app.domain.service.ProcessPendingResult
 import com.campuschat.app.domain.service.X3DHSessionService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,7 +67,7 @@ class ConversationViewModel(
         val repo = localChatRepository ?: return
         val currentUserId = com.campuschat.app.core.session.SessionManager.getCurrentUserId() ?: ""
         viewModelScope.launch {
-            repo.getMessagesForConversation(recipientUserId, recipientDeviceId)
+            repo.getMessagesForConversation(currentUserId, recipientUserId, recipientDeviceId)
                 .catch { /* ignore */ }
                 .collect { entityList ->
                     val uiItems = entityList.map { entity ->
@@ -101,16 +102,18 @@ class ConversationViewModel(
         val localDeviceId = DeviceIdProvider.getDeviceId()
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
-            val result = pendingMessageService.fetchAndDecryptPendingMessages(localDeviceId)
-            when (result) {
-                is com.campuschat.app.domain.service.ProcessPendingResult.Processed -> {
+            when (val result = pendingMessageService.fetchAndDecryptPendingMessages(localDeviceId)) {
+                is ProcessPendingResult.Processed -> {
                     _uiState.value = _uiState.value.copy(isLoading = false)
                 }
-                is com.campuschat.app.domain.service.ProcessPendingResult.Error -> {
+                is ProcessPendingResult.Error -> {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         errorMessage = result.message
                     )
+                }
+                else -> {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
                 }
             }
         }
@@ -125,15 +128,61 @@ class ConversationViewModel(
             _uiState.value = _uiState.value.copy(isSending = true, errorMessage = null)
 
             // Step 1: Ensure X3DH session is established if service is provided
+            var targetRegistrationId = 1
             if (x3dhSessionService != null) {
-                val sessionRes = x3dhSessionService.establishOutboundSession(recipientDeviceId)
-                if (sessionRes is X3DHSessionResult.CryptoFailure || sessionRes is X3DHSessionResult.NetworkFailure) {
-                    // Log error safely without exposing message content
-                    _uiState.value = _uiState.value.copy(
-                        isSending = false,
-                        errorMessage = "Session establishment failed"
-                    )
-                    return@launch
+                when (val sessionRes = x3dhSessionService.establishOutboundSession(recipientDeviceId)) {
+                    is X3DHSessionResult.SessionEstablished -> {
+                        targetRegistrationId = sessionRes.address.deviceId
+                    }
+                    is X3DHSessionResult.CryptoFailure -> {
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            errorMessage = sessionRes.reason
+                        )
+                        return@launch
+                    }
+                    is X3DHSessionResult.NetworkFailure -> {
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            errorMessage = sessionRes.reason
+                        )
+                        return@launch
+                    }
+                    is X3DHSessionResult.StorageFailure -> {
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            errorMessage = sessionRes.reason
+                        )
+                        return@launch
+                    }
+                    is X3DHSessionResult.InvalidPreKeyBundle -> {
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            errorMessage = sessionRes.reason
+                        )
+                        return@launch
+                    }
+                    is X3DHSessionResult.IdentityChanged -> {
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            errorMessage = "Identity changed for recipient device."
+                        )
+                        return@launch
+                    }
+                    is X3DHSessionResult.RecipientDeviceUnavailable -> {
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            errorMessage = sessionRes.reason
+                        )
+                        return@launch
+                    }
+                    is X3DHSessionResult.AuthenticationRequired -> {
+                        _uiState.value = _uiState.value.copy(
+                            isSending = false,
+                            errorMessage = "Authentication required."
+                        )
+                        return@launch
+                    }
                 }
             }
 
@@ -142,7 +191,7 @@ class ConversationViewModel(
                 senderDeviceId = localDeviceId,
                 recipientUserId = recipientUserId,
                 recipientDeviceId = recipientDeviceId,
-                recipientRegistrationId = 1,
+                recipientRegistrationId = targetRegistrationId,
                 plaintext = input
             )
 
